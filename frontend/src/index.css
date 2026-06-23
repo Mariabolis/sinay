@@ -37,4 +37,8 @@
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha
            focus-visible:outline-offset-[3px];
   }
+  .input-field {
+    @apply w-full text-sm text-[#4A3F38] bg-[#F4EEE8] border border-[#d8cfc5] rounded-lg
+           px-3 py-2 outline-none focus:border-[#8B7568] transition-colors;
+  }
 }
