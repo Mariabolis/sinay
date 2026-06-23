@@ -1,0 +1,454 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cream:#F4EEE8;
+    --cream-deep:#ECE3D9;
+    --dusty-pink:#EBCFD2;
+    --sage:#B9C0AE;
+    --sky-blue:#C9D8E8;
+    --mocha:#8B7568;
+    --ink:#4A3F38;
+    --font-display:'Cormorant Garamond', serif;
+    --font-body:'Quicksand', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  .sinay-root{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.5;
+    overflow-x:hidden;
+  }
+  .sinay-root h1,.sinay-root h2,.sinay-root h3,.sinay-root .logo{
+    font-family:var(--font-display);
+    font-weight:500;
+    margin:0;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+  /* NAV */
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:22px 24px;}
+  .logo{font-size:26px;letter-spacing:0.18em;color:var(--mocha);}
+  .logo span{display:block;font-family:var(--font-body);font-size:11px;letter-spacing:0.32em;color:var(--dusty-pink-text, #C98FA0);text-transform:uppercase;margin-top:2px;}
+  .nav-links{display:flex;gap:28px;font-size:14px;letter-spacing:0.04em;list-style:none;padding:0;margin:0;}
+  .nav-links a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent;padding-bottom:4px;transition:border-color .2s;}
+  .nav-links a:hover,.nav-links a:focus-visible{border-color:var(--mocha);}
+  .nav-actions{display:flex;gap:14px;align-items:center;font-size:13px;}
+  .pill-btn{
+    font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.03em;
+    background:var(--mocha);color:var(--cream);border:none;border-radius:999px;
+    padding:11px 22px;cursor:pointer;transition:transform .15s, box-shadow .15s;
+  }
+  .pill-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(139,117,104,.25);}
+  .pill-btn:focus-visible{outline:2px solid var(--mocha);outline-offset:3px;}
+  .pill-btn.ghost{background:transparent;color:var(--mocha);border:1.5px solid var(--mocha);}
+
+  /* WAVE DIVIDER — the recurring signature motif */
+  .wave-divider{width:100%;height:28px;display:block;}
+  .wave-divider path{fill:none;stroke-width:1.6;}
+
+  /* HERO */
+  .hero{text-align:center;padding:64px 24px 40px;}
+  .hero .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--mocha);margin-bottom:18px;}
+  .hero h1{font-size:clamp(48px,9vw,84px);letter-spacing:.1em;color:var(--mocha);}
+  .hero .tagline{font-family:var(--font-display);font-style:italic;font-size:clamp(18px,2.6vw,24px);color:var(--ink);margin-top:10px;}
+  .hero p.sub{max-width:440px;margin:18px auto 28px;font-size:15px;color:#6b5d54;}
+  .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+  .pill-btn.small{padding:8px 16px;font-size:12px;}
+
+  /* MANIFESTO */
+  .manifesto{text-align:center;padding:8px 24px 56px;max-width:640px;}
+  .manifesto-lead{font-family:var(--font-display);font-size:clamp(19px,2.6vw,24px);color:var(--ink);line-height:1.45;margin-bottom:30px;}
+  .manifesto-cols{display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:26px;flex-wrap:wrap;}
+  .manifesto-cols > div:not(.manifesto-x){flex:1;min-width:180px;}
+  .manifesto-label{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mocha);margin-bottom:6px;}
+  .manifesto-cols p{font-size:14px;color:#6b5d54;margin:0;}
+  .manifesto-x{font-family:var(--font-display);font-size:22px;color:var(--dusty-pink);}
+  .manifesto-tag{font-family:var(--font-display);font-style:italic;font-size:18px;color:var(--mocha);}
+
+  /* READY-MADE SETS */
+  .sets-section{padding:64px 24px 20px;}
+  .sets-sub{font-size:14px;color:#6b5d54;margin-top:8px;}
+  .sets-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:36px;}
+  .set-card{background:#fff;border-radius:18px;padding:18px;text-align:center;transition:transform .15s;}
+  .set-card:hover{transform:translateY(-4px);}
+  .set-card svg{width:100%;max-height:200px;}
+  .set-card h4{font-family:var(--font-body);font-weight:600;font-size:13.5px;margin:10px 0 2px;}
+  .set-style{font-size:11.5px;color:#8a7c72;margin:0 0 8px;}
+  .price-tag{font-size:13px;color:var(--mocha);margin-bottom:12px;}
+  .price-tag .strike{text-decoration:line-through;color:#b3a89f;margin-left:6px;font-size:12px;}
+
+  /* ICON STRIP */
+  .icon-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:18px;padding:36px 24px;background:var(--cream-deep);}
+  .icon-card{text-align:center;}
+  .icon-card svg{width:34px;height:34px;stroke:var(--mocha);fill:none;stroke-width:1.4;margin-bottom:10px;}
+  .icon-card span{display:block;font-size:12.5px;color:var(--ink);}
+
+  /* BUILDER — signature interactive section */
+  .builder{padding:72px 24px;}
+  .builder-head{text-align:center;margin-bottom:44px;}
+  .builder-head .eyebrow{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--mocha);}
+  .builder-head h2{font-size:clamp(30px,5vw,42px);color:var(--ink);margin-top:8px;}
+  .builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;}
+  .piece-panel{text-align:center;}
+  .piece-panel h3{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--mocha);margin-bottom:18px;font-family:var(--font-body);font-weight:600;}
+  .garment-stage{
+    background:#fff;border-radius:24px;padding:22px;margin-bottom:20px;
+    box-shadow:0 10px 30px rgba(139,117,104,.10);
+  }
+  .garment-stage svg{width:100%;height:auto;max-height:220px;display:block;margin:0 auto;}
+  .style-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .style-pill{
+    font-family:var(--font-body);font-size:11.5px;font-weight:600;letter-spacing:.01em;
+    border:1.4px solid var(--mocha);background:transparent;color:var(--mocha);
+    border-radius:999px;padding:7px 13px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .style-pill.active{background:var(--mocha);color:var(--cream);}
+  .style-pill:focus-visible{outline:2px solid var(--mocha);outline-offset:2px;}
+  .swatches{display:flex;justify-content:center;gap:12px;margin-bottom:14px;}
+  .swatch{
+    width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;
+    transition:transform .15s, border-color .15s;padding:0;
+  }
+  .swatch:hover{transform:scale(1.1);}
+  .swatch.active{border-color:var(--mocha);}
+  .swatch:focus-visible{outline:2px solid var(--mocha);outline-offset:3px;}
+  .size-row{display:flex;justify-content:center;gap:8px;}
+  .size-pill{
+    font-family:var(--font-body);font-size:12px;font-weight:600;
+    border:1.4px solid var(--mocha);background:transparent;color:var(--mocha);
+    border-radius:999px;padding:6px 13px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .size-pill.active{background:var(--mocha);color:var(--cream);}
+  .size-pill:focus-visible{outline:2px solid var(--mocha);outline-offset:2px;}
+
+  .set-bar{
+    margin-top:48px;display:flex;align-items:center;justify-content:space-between;gap:18px;
+    background:#fff;border-radius:18px;padding:18px 26px;box-shadow:0 8px 24px rgba(139,117,104,.12);
+    flex-wrap:wrap;
+  }
+  .set-bar .label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mocha);}
+  .set-bar .price{font-family:var(--font-display);font-size:24px;color:var(--ink);}
+
+  /* SHOP PREVIEW */
+  .shop{padding:60px 24px 80px;background:var(--cream-deep);}
+  .shop-head{text-align:center;margin-bottom:36px;}
+  .shop-head .eyebrow{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--mocha);}
+  .shop-head h2{font-size:clamp(28px,5vw,38px);margin-top:8px;}
+  .product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .product-card{background:#fff;border-radius:18px;padding:18px;text-align:center;transition:transform .15s;}
+  .product-card:hover{transform:translateY(-4px);}
+  .product-card .swatch-block{height:120px;border-radius:12px;margin-bottom:14px;}
+  .product-card h4{font-family:var(--font-body);font-weight:600;font-size:14px;margin-bottom:4px;}
+  .product-card .price-tag{font-size:13px;color:var(--mocha);}
+
+  /* FOOTER RIBBON */
+  .ribbon{
+    background:linear-gradient(90deg,var(--dusty-pink),var(--sky-blue));
+    padding:18px 0;overflow:hidden;
+  }
+  .ribbon-text{
+    display:flex;justify-content:center;gap:14px;font-size:13px;letter-spacing:.06em;
+    color:var(--ink);font-weight:600;flex-wrap:wrap;text-align:center;
+  }
+  footer.foot{padding:40px 24px;text-align:center;font-size:12.5px;color:#8a7c72;}
+
+  @media (max-width:760px){
+    .nav-links{display:none;}
+    .icon-strip{grid-template-columns:repeat(3,1fr);}
+    .builder-grid{grid-template-columns:1fr;gap:32px;}
+    .product-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .sinay-root *{transition:none !important;animation:none !important;}
+  }
+</style>
+
+<div class="sinay-root">
+
+  <!-- NAV -->
+  <nav class="nav wrap">
+    <div class="logo">SINAY<span>sleepwear</span></div>
+    <ul class="nav-links">
+      <li><a href="#sets">Ready-made Sets</a></li>
+      <li><a href="#builder">Build Your Own</a></li>
+      <li><a href="#">About</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="#" class="pill-btn ghost">Log in</a>
+      <a href="#" class="pill-btn">Cart (0)</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="eyebrow">Korean-inspired loungewear</div>
+    <h1>SINAY</h1>
+    <p class="tagline">made to feel like you</p>
+    <p class="sub">Comfort should feel personal. Choose your top, your bottom, your color — and make it yours.</p>
+    <div class="hero-ctas">
+      <a href="#sets" class="pill-btn">Shop Ready-made Sets</a>
+      <a href="#builder" class="pill-btn ghost">Build Your Own</a>
+    </div>
+  </section>
+
+  <!-- MANIFESTO -->
+  <section class="manifesto wrap">
+    <p class="manifesto-lead">Instead of a fixed pajama set, every SINAY piece is designed to be mixed and matched your way.</p>
+    <div class="manifesto-cols">
+      <div>
+        <span class="manifesto-label">Choose your top</span>
+        <p>Classic short-sleeve · Sleeveless · Relaxed shirt</p>
+      </div>
+      <div class="manifesto-x">+</div>
+      <div>
+        <span class="manifesto-label">Pair it with</span>
+        <p>Shorts · Bermuda shorts · Wide-leg pants</p>
+      </div>
+    </div>
+    <p class="manifesto-tag">Mix. Match. Make it yours.</p>
+  </section>
+
+  <svg class="wave-divider" viewBox="0 0 400 28" preserveAspectRatio="none">
+    <path d="M0,14 Q25,4 50,14 T100,14 T150,14 T200,14 T250,14 T300,14 T350,14 T400,14" stroke="#C98FA0" opacity="0.5"/>
+  </svg>
+
+  <!-- ICON STRIP -->
+  <section class="icon-strip">
+    <div class="icon-card">
+      <svg viewBox="0 0 24 24"><path d="M5 19c8 0 14-6 14-14-8 0-14 6-14 14z"/><path d="M5 19c0-5 2-9 6-11"/></svg>
+      <span>Lightweight &amp; breathable</span>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 24 24"><path d="M7 17a4 4 0 010-8 5 5 0 019.6-1.5A4.5 4.5 0 0117.5 17H7z"/></svg>
+      <span>Super soft</span>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 24 24"><path d="M3 10c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 16c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>
+      <span>Made for comfort</span>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0112 5.5 5.5 5.5 0 0121.5 11c-2.5 4.6-9.5 9-9.5 9z"/></svg>
+      <span>All day comfort</span>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 24 24"><path d="M6 4h5l1 2h6v3H6z"/><path d="M6 9v11h12V9"/></svg>
+      <span>Mix &amp; match your way</span>
+    </div>
+  </section>
+
+  <svg class="wave-divider" viewBox="0 0 400 28" preserveAspectRatio="none">
+    <path d="M0,14 Q25,24 50,14 T100,14 T150,14 T200,14 T250,14 T300,14 T350,14 T400,14" stroke="#8B7568" opacity="0.35"/>
+  </svg>
+
+  <!-- READY-MADE SETS -->
+  <section class="sets-section wrap" id="sets">
+    <div class="shop-head">
+      <div class="eyebrow">No mixing needed</div>
+      <h2>Ready-made sets</h2>
+      <p class="sets-sub">Matching top + bottom, picked for you — one click to add.</p>
+    </div>
+    <div class="sets-grid">
+      <div class="set-card">
+        <svg viewBox="0 0 200 260">
+          <g transform="translate(40,5) scale(0.6)"><path fill="#EBCFD2" stroke="#8B7568" stroke-width="2.2" d="M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z"/></g>
+          <g transform="translate(42,118) scale(0.58)"><path fill="#EBCFD2" stroke="#8B7568" stroke-width="2.2" d="M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"/></g>
+        </svg>
+        <h4>Dusty Pink Morning Set</h4>
+        <p class="set-style">Short-sleeve top + Wide-leg pants</p>
+        <div class="price-tag">EGP 790 <span class="strike">EGP 870</span></div>
+        <button class="pill-btn small">Add Set to Bag</button>
+      </div>
+      <div class="set-card">
+        <svg viewBox="0 0 200 260">
+          <g transform="translate(40,5) scale(0.6)"><path fill="#B9C0AE" stroke="#8B7568" stroke-width="2.2" d="M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z"/></g>
+          <g transform="translate(42,118) scale(0.58)"><path fill="#B9C0AE" stroke="#8B7568" stroke-width="2.2" d="M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"/></g>
+        </svg>
+        <h4>Sage Slow-morning Set</h4>
+        <p class="set-style">Relaxed shirt + Bermuda shorts</p>
+        <div class="price-tag">EGP 790 <span class="strike">EGP 870</span></div>
+        <button class="pill-btn small">Add Set to Bag</button>
+      </div>
+      <div class="set-card">
+        <svg viewBox="0 0 200 260">
+          <g transform="translate(40,5) scale(0.6)"><path fill="#C9D8E8" stroke="#8B7568" stroke-width="2.2" d="M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z"/></g>
+          <g transform="translate(42,118) scale(0.58)"><path fill="#C9D8E8" stroke="#8B7568" stroke-width="2.2" d="M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"/></g>
+        </svg>
+        <h4>Sky Blue Cloud Set</h4>
+        <p class="set-style">Sleeveless top + Shorts</p>
+        <div class="price-tag">EGP 790 <span class="strike">EGP 870</span></div>
+        <button class="pill-btn small">Add Set to Bag</button>
+      </div>
+      <div class="set-card">
+        <svg viewBox="0 0 200 260">
+          <g transform="translate(40,5) scale(0.6)"><path fill="#8B7568" stroke="#6b574d" stroke-width="2.2" d="M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z"/></g>
+          <g transform="translate(42,118) scale(0.58)"><path fill="#8B7568" stroke="#6b574d" stroke-width="2.2" d="M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"/></g>
+        </svg>
+        <h4>Mocha Night-in Set</h4>
+        <p class="set-style">Short-sleeve top + Wide-leg pants</p>
+        <div class="price-tag">EGP 790 <span class="strike">EGP 870</span></div>
+        <button class="pill-btn small">Add Set to Bag</button>
+      </div>
+    </div>
+  </section>
+
+  <svg class="wave-divider" viewBox="0 0 400 28" preserveAspectRatio="none">
+    <path d="M0,14 Q25,4 50,14 T100,14 T150,14 T200,14 T250,14 T300,14 T350,14 T400,14" stroke="#C98FA0" opacity="0.5"/>
+  </svg>
+
+  <!-- BUILDER -->
+  <section class="builder wrap" id="builder">
+    <div class="builder-head">
+      <div class="eyebrow">Prefer to mix it yourself?</div>
+      <h2>Build your own</h2>
+    </div>
+
+    <div class="builder-grid">
+      <!-- TOP -->
+      <div class="piece-panel">
+        <h3>01 — Choose a top</h3>
+        <div class="garment-stage">
+          <svg viewBox="0 0 200 180">
+            <path id="top-shape" fill="#EBCFD2" stroke="#8B7568" stroke-width="2.2"
+              d="M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z"/>
+          </svg>
+        </div>
+        <div class="style-row" data-target="top-style">
+          <button class="style-pill active" data-style="classic">Short-sleeve</button>
+          <button class="style-pill" data-style="sleeveless">Sleeveless</button>
+          <button class="style-pill" data-style="relaxed">Relaxed shirt</button>
+        </div>
+        <div class="swatches" data-target="top">
+          <button class="swatch active" style="background:#EBCFD2" data-color="#EBCFD2" aria-label="Dusty pink top"></button>
+          <button class="swatch" style="background:#B9C0AE" data-color="#B9C0AE" aria-label="Sage top"></button>
+          <button class="swatch" style="background:#C9D8E8" data-color="#C9D8E8" aria-label="Sky blue top"></button>
+          <button class="swatch" style="background:#8B7568" data-color="#8B7568" aria-label="Mocha top"></button>
+        </div>
+        <div class="size-row" data-target="top-size">
+          <button class="size-pill active">S</button>
+          <button class="size-pill">M</button>
+          <button class="size-pill">L</button>
+          <button class="size-pill">XL</button>
+        </div>
+      </div>
+
+      <!-- BOTTOM -->
+      <div class="piece-panel">
+        <h3>02 — Choose a bottom</h3>
+        <div class="garment-stage">
+          <svg viewBox="0 0 200 180">
+            <path id="bottom-shape" fill="#C9D8E8" stroke="#8B7568" stroke-width="2.2"
+              d="M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"/>
+          </svg>
+        </div>
+        <div class="style-row" data-target="bottom-style">
+          <button class="style-pill" data-style="shorts">Shorts</button>
+          <button class="style-pill" data-style="bermuda">Bermuda</button>
+          <button class="style-pill active" data-style="wideleg">Wide-leg</button>
+        </div>
+        <div class="swatches" data-target="bottom">
+          <button class="swatch" style="background:#EBCFD2" data-color="#EBCFD2" aria-label="Dusty pink bottom"></button>
+          <button class="swatch" style="background:#B9C0AE" data-color="#B9C0AE" aria-label="Sage bottom"></button>
+          <button class="swatch active" style="background:#C9D8E8" data-color="#C9D8E8" aria-label="Sky blue bottom"></button>
+          <button class="swatch" style="background:#8B7568" data-color="#8B7568" aria-label="Mocha bottom"></button>
+        </div>
+        <div class="size-row" data-target="bottom-size">
+          <button class="size-pill active">S</button>
+          <button class="size-pill">M</button>
+          <button class="size-pill">L</button>
+          <button class="size-pill">XL</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="set-bar">
+      <div>
+        <div class="label">Your set</div>
+        <div class="price" id="set-price">EGP 870</div>
+      </div>
+      <button class="pill-btn">Add Set to Bag</button>
+    </div>
+  </section>
+
+  <!-- SHOP PREVIEW -->
+  <section class="shop">
+    <div class="wrap">
+      <div class="shop-head">
+        <div class="eyebrow">Sold separately</div>
+        <h2>Or shop individual pieces</h2>
+      </div>
+      <div class="product-grid">
+        <div class="product-card"><div class="swatch-block" style="background:#EBCFD2"></div><h4>Sage Trim Top</h4><div class="price-tag">from EGP 450</div></div>
+        <div class="product-card"><div class="swatch-block" style="background:#B9C0AE"></div><h4>Wide-leg Bottom</h4><div class="price-tag">from EGP 420</div></div>
+        <div class="product-card"><div class="swatch-block" style="background:#C9D8E8"></div><h4>Cloud Tee Top</h4><div class="price-tag">from EGP 450</div></div>
+        <div class="product-card"><div class="swatch-block" style="background:#8B7568"></div><h4>Mocha Lounge Bottom</h4><div class="price-tag">from EGP 420</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="ribbon">
+    <div class="ribbon-text wrap">
+      <span>soft, comfy &amp; yours</span><span>•</span>
+      <span>made to feel like you</span><span>•</span>
+      <span>for slow mornings &amp; easy nights</span>
+    </div>
+  </div>
+  <footer class="foot">© SINAY sleepwear — preview build, not final copy</footer>
+</div>
+
+<script>
+(function(){
+  var root = document.currentScript.parentElement;
+  var topShape = root.querySelector('#top-shape');
+  var bottomShape = root.querySelector('#bottom-shape');
+
+  var TOP_PATHS = {
+    classic:    "M70,20 L85,12 L100,22 L115,12 L130,20 L130,40 L150,55 L150,80 L130,72 L130,160 L70,160 L70,72 L50,80 L50,55 L70,40 Z",
+    sleeveless: "M78,14 L84,30 L70,30 L70,160 L130,160 L130,30 L116,30 L122,14 L100,24 Z",
+    relaxed:    "M65,20 L82,10 L100,22 L118,10 L135,20 L135,42 L155,58 L155,84 L135,76 L135,164 L65,164 L65,76 L45,84 L45,58 L65,42 Z"
+  };
+  var BOTTOM_PATHS = {
+    shorts:  "M55,15 L145,15 L148,65 L112,65 L110,100 L90,100 L88,65 L52,65 Z",
+    bermuda: "M55,15 L145,15 L149,75 L113,75 L109,130 L91,130 L87,75 L51,75 Z",
+    wideleg: "M55,15 L145,15 L150,90 L115,90 L108,160 L92,160 L92,95 L108,95 L108,90 L92,90 L85,160 L69,160 L62,90 L50,90 Z"
+  };
+
+  function wireSwatches(target, shapeEl){
+    var group = root.querySelector('.swatches[data-target="'+target+'"]');
+    group.querySelectorAll('.swatch').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        group.querySelectorAll('.swatch').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        shapeEl.setAttribute('fill', btn.getAttribute('data-color'));
+      });
+    });
+  }
+  wireSwatches('top', topShape);
+  wireSwatches('bottom', bottomShape);
+
+  function wireStyles(target, shapeEl, paths){
+    var group = root.querySelector('.style-row[data-target="'+target+'"]');
+    group.querySelectorAll('.style-pill').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        group.querySelectorAll('.style-pill').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        shapeEl.setAttribute('d', paths[btn.getAttribute('data-style')]);
+      });
+    });
+  }
+  wireStyles('top-style', topShape, TOP_PATHS);
+  wireStyles('bottom-style', bottomShape, BOTTOM_PATHS);
+
+  root.querySelectorAll('.size-row').forEach(function(row){
+    row.querySelectorAll('.size-pill').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        row.querySelectorAll('.size-pill').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+      });
+    });
+  });
+})();
+</script>

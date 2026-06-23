@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Quicksand', sans-serif;
+    background-color: #F4EEE8;
+    color: #4A3F38;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Shared pill button base — apply via .btn-pill-solid / .btn-pill-ghost */
+  .btn-pill-solid {
+    @apply inline-flex items-center justify-center font-body font-semibold text-[13px]
+           tracking-[0.03em] rounded-full px-[22px] py-[11px] bg-mocha text-cream
+           cursor-pointer transition-all duration-150
+           hover:-translate-y-px hover:shadow-[0_6px_16px_rgba(139,117,104,.25)]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha
+           focus-visible:outline-offset-[3px];
+  }
+  .btn-pill-ghost {
+    @apply inline-flex items-center justify-center font-body font-semibold text-[13px]
+           tracking-[0.03em] rounded-full px-[22px] py-[11px] bg-transparent text-mocha
+           border-[1.5px] border-mocha cursor-pointer transition-all duration-150
+           hover:-translate-y-px
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha
+           focus-visible:outline-offset-[3px];
+  }
+  .btn-pill-sm {
+    @apply inline-flex items-center justify-center font-body font-semibold text-[12px]
+           tracking-[0.03em] rounded-full px-4 py-2 bg-mocha text-cream
+           cursor-pointer transition-all duration-150
+           hover:-translate-y-px
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha
+           focus-visible:outline-offset-[3px];
+  }
+}
