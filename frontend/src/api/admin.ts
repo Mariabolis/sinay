@@ -60,6 +60,25 @@ export interface AdminCoupon {
   expires_at: string | null
 }
 
+export interface VariantBrief {
+  id:            string
+  product_name:  string
+  color_name:    string
+  color_hex:     string
+  size:          string
+}
+
+export interface AdminReadySet {
+  id:                string
+  name:              string
+  price:             number
+  is_active:         boolean
+  top_variant_id:    string
+  bottom_variant_id: string
+  top_variant:       VariantBrief
+  bottom_variant:    VariantBrief
+}
+
 export interface DashboardSummary {
   total_revenue:        number
   orders_count:         number
@@ -125,4 +144,17 @@ export const adminApi = {
 
   toggleCoupon: (id: string) =>
     client.patch(`/api/admin/coupons/${id}/toggle`).then(r => r.data),
+
+  // Sets
+  listSets: () =>
+    client.get<AdminReadySet[]>('/api/admin/sets').then(r => r.data),
+
+  createSet: (data: { name: string; top_variant_id: string; bottom_variant_id: string; price: number }) =>
+    client.post<AdminReadySet>('/api/admin/sets', data).then(r => r.data),
+
+  updateSet: (id: string, data: { name?: string; price?: number; is_active?: boolean }) =>
+    client.put<AdminReadySet>(`/api/admin/sets/${id}`, data).then(r => r.data),
+
+  deleteSet: (id: string) =>
+    client.delete(`/api/admin/sets/${id}`).then(r => r.data),
 }

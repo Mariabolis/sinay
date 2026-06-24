@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { adminApi, DashboardSummary } from '../../api/admin'
+import type { DashboardSummary } from '../../api/admin'
+import { adminApi } from '../../api/admin'
 
 export default function AdminOverviewPage() {
   const [data, setData] = useState<DashboardSummary | null>(null)

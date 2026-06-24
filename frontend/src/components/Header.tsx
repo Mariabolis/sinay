@@ -43,6 +43,11 @@ export default function Header() {
               <span className="hidden md:block text-[13px] text-mocha/70 mr-1">
                 {user.full_name || user.email}
               </span>
+              {user.role === 'admin' && (
+                <Link to="/admin" className="btn-pill-ghost">
+                  Admin
+                </Link>
+              )}
               <button onClick={logout} className="btn-pill-ghost">
                 Sign out
               </button>

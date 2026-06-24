@@ -47,6 +47,11 @@ export const cartApi = {
       })
       .then(r => r.data),
 
+  addReadySet: (setId: string, size: string) =>
+    client
+      .post<CartResponse>(`/api/cart/ready-sets/${setId}`, { size })
+      .then(r => r.data),
+
   addItem: (variantId: string, quantity = 1) =>
     client
       .post<CartResponse>('/api/cart/items', { variant_id: variantId, quantity })

@@ -218,6 +218,95 @@ func (h *CartHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ── POST /api/cart/ready-sets/:id ─────────────────────────────────────────────
+// Customer adds a ready-made set to cart, picking their own size.
+// The backend resolves the correct variants by product+color+size, then
+// applies the set's custom price (split proportionally).
+
+func (h *CartHandler) AddReadySet(c *gin.Context) {
+	setID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid set id"})
+		return
+	}
+
+	var req struct {
+		Size string `json:"size" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "size is required"})
+		return
+	}
+
+	var set models.ReadySet
+	if err := h.db.
+		Preload("TopVariant.Product").
+		Preload("BottomVariant.Product").
+		Where("id = ? AND is_active = true", setID).
+		First(&set).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "set not found"})
+		return
+	}
+
+	// Find the variant with the same product + color + requested size
+	var topVar, botVar models.ProductVariant
+
+	if err := h.db.Preload("Product").
+		Where("product_id = ? AND color_hex = ? AND size = ?",
+			set.TopVariant.ProductID, set.TopVariant.ColorHex, req.Size).
+		First(&topVar).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "top variant not available in size " + req.Size})
+		return
+	}
+	if err := h.db.Preload("Product").
+		Where("product_id = ? AND color_hex = ? AND size = ?",
+			set.BottomVariant.ProductID, set.BottomVariant.ColorHex, req.Size).
+		First(&botVar).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bottom variant not available in size " + req.Size})
+		return
+	}
+
+	if topVar.StockQuantity < 1 || botVar.StockQuantity < 1 {
+		c.JSON(http.StatusConflict, gin.H{"error": "one or more variants are out of stock in that size"})
+		return
+	}
+
+	// Split the set price proportionally between top and bottom
+	topInd := effectivePrice(&topVar)
+	botInd := effectivePrice(&botVar)
+	totalInd := topInd + botInd
+	var topPrice, botPrice float64
+	if totalInd > 0 {
+		topPrice = math.Round(set.Price*topInd/totalInd*100) / 100
+	} else {
+		topPrice = math.Round(set.Price/2*100) / 100
+	}
+	botPrice = math.Round((set.Price-topPrice)*100) / 100
+
+	cart, err := h.getOrCreateCart(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not resolve cart"})
+		return
+	}
+
+	cartSetID := uuid.New()
+	items := []models.CartItem{
+		{CartID: cart.ID, VariantID: topVar.ID, SetID: &cartSetID, UnitPrice: topPrice, Quantity: 1},
+		{CartID: cart.ID, VariantID: botVar.ID, SetID: &cartSetID, UnitPrice: botPrice, Quantity: 1},
+	}
+	if err := h.db.Create(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not add set to cart"})
+		return
+	}
+
+	resp, err := h.buildResponse(cart.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load cart"})
+		return
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
 // ── POST /api/cart/sets ───────────────────────────────────────────────────────
 
 func (h *CartHandler) AddSet(c *gin.Context) {

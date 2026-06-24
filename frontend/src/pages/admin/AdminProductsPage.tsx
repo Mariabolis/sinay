@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminProduct, AdminVariant } from '../../api/admin'
+import type { AdminProduct, AdminVariant } from '../../api/admin'
+import { adminApi } from '../../api/admin'
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<AdminProduct[]>([])
@@ -19,8 +20,11 @@ export default function AdminProductsPage() {
     try {
       const updated = await adminApi.updateProduct(id, { name, base_price: price, is_active: isActive })
       setProducts(ps => ps.map(p => (p.id === id ? updated : p)))
-    } catch {
-      alert('Failed to update product')
+      return true
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Save failed'
+      alert(`Error: ${msg}`)
+      return false
     }
   }
 
@@ -36,8 +40,11 @@ export default function AdminProductsPage() {
           variants: p.variants.map(v => (v.id === variantId ? updated : v)),
         }))
       )
-    } catch {
-      alert('Failed to update variant')
+      return true
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Save failed'
+      alert(`Error: ${msg}`)
+      return false
     }
   }
 
@@ -70,27 +77,27 @@ interface ProductRowProps {
   product:        AdminProduct
   expanded:       boolean
   onToggle:       () => void
-  onProductSave:  (id: string, name: string, price: number, isActive: boolean) => Promise<void>
-  onVariantSave:  (variantId: string, stock: number, priceOverride: number | null) => Promise<void>
+  onProductSave:  (id: string, name: string, price: number, isActive: boolean) => Promise<boolean>
+  onVariantSave:  (variantId: string, stock: number, priceOverride: number | null) => Promise<boolean>
 }
 
 function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave }: ProductRowProps) {
-  const [editName,  setEditName]  = useState(product.name)
-  const [editPrice, setEditPrice] = useState(product.base_price.toString())
+  const [editName,   setEditName]   = useState(product.name)
+  const [editPrice,  setEditPrice]  = useState(product.base_price.toString())
   const [editActive, setEditActive] = useState(product.is_active)
-  const [saving, setSaving] = useState(false)
-  const [dirty, setDirty]   = useState(false)
+  const [saving,     setSaving]     = useState(false)
+  const [saved,      setSaved]      = useState(false)
 
-  const handleChange = <T,>(setter: (v: T) => void) => (v: T) => {
-    setter(v)
-    setDirty(true)
-  }
+  const dirty =
+    editName !== product.name ||
+    parseFloat(editPrice) !== product.base_price ||
+    editActive !== product.is_active
 
-  const handleSave = async () => {
+  const save = async () => {
     setSaving(true)
-    await onProductSave(product.id, editName, parseFloat(editPrice) || 0, editActive)
+    const ok = await onProductSave(product.id, editName, parseFloat(editPrice) || 0, editActive)
     setSaving(false)
-    setDirty(false)
+    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
   }
 
   return (
@@ -109,7 +116,7 @@ function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave 
           className="flex-1 text-sm font-medium text-[#4A3F38] bg-transparent border-b border-transparent
                      focus:border-[#8B7568] focus:outline-none py-0.5 transition-colors"
           value={editName}
-          onChange={e => handleChange(setEditName)(e.target.value)}
+          onChange={e => setEditName(e.target.value)}
         />
 
         {/* Type badge */}
@@ -121,10 +128,11 @@ function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave 
         <label className="flex items-center gap-1 text-sm text-[#8B7568]">
           EGP
           <input
+            type="number"
             className="w-20 text-right text-[#4A3F38] bg-transparent border-b border-transparent
                        focus:border-[#8B7568] focus:outline-none py-0.5 transition-colors"
             value={editPrice}
-            onChange={e => handleChange(setEditPrice)(e.target.value)}
+            onChange={e => setEditPrice(e.target.value)}
           />
         </label>
 
@@ -133,22 +141,27 @@ function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave 
           <input
             type="checkbox"
             checked={editActive}
-            onChange={e => handleChange(setEditActive)(e.target.checked)}
+            onChange={e => setEditActive(e.target.checked)}
             className="accent-[#8B7568]"
           />
           Active
         </label>
 
-        {dirty && (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white
-                       hover:bg-[#7a6659] disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        )}
+        {/* Save button */}
+        <div className="flex items-center gap-2 w-20 justify-end">
+          {saved ? (
+            <span className="text-xs text-emerald-600">✓ Saved</span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white
+                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Variants sub-table */}
@@ -181,7 +194,7 @@ function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave 
 
 interface VariantRowProps {
   variant:  AdminVariant
-  onSave:   (variantId: string, stock: number, priceOverride: number | null) => Promise<void>
+  onSave:   (variantId: string, stock: number, priceOverride: number | null) => Promise<boolean>
 }
 
 function VariantRow({ variant, onSave }: VariantRowProps) {
@@ -190,16 +203,17 @@ function VariantRow({ variant, onSave }: VariantRowProps) {
     variant.price_override != null ? variant.price_override.toString() : ''
   )
   const [saving, setSaving] = useState(false)
-  const [dirty,  setDirty]  = useState(false)
+  const [saved,  setSaved]  = useState(false)
 
-  const mark = () => setDirty(true)
+  const dirty =
+    parseInt(stock, 10) !== variant.stock_quantity ||
+    (priceOverride === '' ? null : parseFloat(priceOverride)) !== variant.price_override
 
-  const handleSave = async () => {
+  const save = async () => {
     setSaving(true)
-    const po = priceOverride !== '' ? parseFloat(priceOverride) : null
-    await onSave(variant.id, parseInt(stock, 10) || 0, po)
+    const ok = await onSave(variant.id, parseInt(stock, 10) || 0, priceOverride !== '' ? parseFloat(priceOverride) : null)
     setSaving(false)
-    setDirty(false)
+    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
   }
 
   return (
@@ -217,28 +231,32 @@ function VariantRow({ variant, onSave }: VariantRowProps) {
       <td className="py-2 pr-3 text-[#8B7568] font-mono">{variant.sku}</td>
       <td className="py-2 pr-3 text-right">
         <input
+          type="number"
           className="w-20 text-right text-[#4A3F38] bg-transparent border-b border-transparent
                      focus:border-[#8B7568] focus:outline-none transition-colors"
           placeholder="—"
           value={priceOverride}
-          onChange={e => { setPriceOverride(e.target.value); mark() }}
+          onChange={e => setPriceOverride(e.target.value)}
         />
       </td>
       <td className="py-2 text-right">
         <input
+          type="number"
           className="w-14 text-right text-[#4A3F38] bg-transparent border-b border-transparent
                      focus:border-[#8B7568] focus:outline-none transition-colors"
           value={stock}
-          onChange={e => { setStock(e.target.value); mark() }}
+          onChange={e => setStock(e.target.value)}
         />
       </td>
-      <td className="py-2 pl-3">
-        {dirty && (
+      <td className="py-2 pl-3 text-xs text-right">
+        {saved ? (
+          <span className="text-emerald-600">✓</span>
+        ) : (
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="text-xs px-2 py-0.5 rounded-md bg-[#8B7568] text-white
-                       hover:bg-[#7a6659] disabled:opacity-50 transition-colors"
+            onClick={save}
+            disabled={!dirty || saving}
+            className="px-2.5 py-0.5 rounded-md bg-[#8B7568] text-white text-[11px]
+                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
           >
             {saving ? '…' : 'Save'}
           </button>

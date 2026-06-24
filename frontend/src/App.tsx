@@ -14,6 +14,7 @@ import AdminOverviewPage from './pages/admin/AdminOverviewPage'
 import AdminProductsPage from './pages/admin/AdminProductsPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
 import AdminCouponsPage from './pages/admin/AdminCouponsPage'
+import AdminSetsPage from './pages/admin/AdminSetsPage'
 import { useCartStore } from './store/cartStore'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
         <Route index element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<AdminOverviewPage />} />
         <Route path="products" element={<AdminProductsPage />} />
+        <Route path="sets"     element={<AdminSetsPage />} />
         <Route path="orders"   element={<AdminOrdersPage />} />
         <Route path="coupons"  element={<AdminCouponsPage />} />
       </Route>

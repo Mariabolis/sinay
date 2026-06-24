@@ -58,6 +58,7 @@ func main() {
 	adminProductHandler  := handlers.NewAdminProductHandler(database)
 	adminOrderHandler    := handlers.NewAdminOrderHandler(database)
 	adminCouponHandler   := handlers.NewAdminCouponHandler(database)
+	adminSetHandler      := handlers.NewAdminSetHandler(database)
 
 	requireAuth := middleware.AuthRequired(database, cfg.JWTSecret)
 
@@ -72,12 +73,14 @@ func main() {
 		api.GET("/products",       productHandler.List)
 		api.GET("/products/:slug", productHandler.Get)
 		api.GET("/colors",         productHandler.Colors)
+		api.GET("/sets",           productHandler.ListSets)
 
 		cart := api.Group("/cart")
 		cart.Use(middleware.OptionalAuth(cfg.JWTSecret))
 		{
 			cart.GET("",              cartHandler.Get)
-			cart.POST("/sets",        cartHandler.AddSet)
+			cart.POST("/sets",             cartHandler.AddSet)
+			cart.POST("/ready-sets/:id",   cartHandler.AddReadySet)
 			cart.POST("/items",       cartHandler.AddItem)
 			cart.PUT("/items/:id",    cartHandler.UpdateItem)
 			cart.DELETE("/items/:id", cartHandler.RemoveItem)
@@ -114,6 +117,11 @@ func main() {
 			admin.GET("/coupons",                     adminCouponHandler.List)
 			admin.POST("/coupons",                    adminCouponHandler.Create)
 			admin.PATCH("/coupons/:id/toggle",        adminCouponHandler.Toggle)
+
+			admin.GET("/sets",                        adminSetHandler.List)
+			admin.POST("/sets",                       adminSetHandler.Create)
+			admin.PUT("/sets/:id",                    adminSetHandler.Update)
+			admin.DELETE("/sets/:id",                 adminSetHandler.Delete)
 		}
 	}
 

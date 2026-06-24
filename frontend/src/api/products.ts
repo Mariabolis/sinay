@@ -47,6 +47,27 @@ export interface ProductFilters {
 
 // ── API ────────────────────────────────────────────────────────────────────────
 
+export interface ReadySetVariant {
+  id:           string
+  product_name: string
+  style:        string
+  color_name:   string
+  color_hex:    string
+}
+
+export interface ReadySet {
+  id:              string
+  name:            string
+  price:           number
+  top_variant:     ReadySetVariant
+  bottom_variant:  ReadySetVariant
+  available_sizes: string[]
+}
+
+export const setsApi = {
+  list: () => client.get<ReadySet[]>('/api/sets').then(r => r.data),
+}
+
 export const productsApi = {
   list(filters?: ProductFilters) {
     const params = new URLSearchParams()

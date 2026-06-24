@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { adminApi, AdminOrder } from '../../api/admin'
+import type { AdminOrder } from '../../api/admin'
+import { adminApi } from '../../api/admin'
 
 const ALL_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']
 

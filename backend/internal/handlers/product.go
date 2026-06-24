@@ -197,6 +197,99 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, toProductResp(product))
 }
 
+// ── GET /api/sets ─────────────────────────────────────────────────────────────
+
+func (h *ProductHandler) ListSets(c *gin.Context) {
+	type variantBrief struct {
+		ID          string `json:"id"`
+		ProductName string `json:"product_name"`
+		Style       string `json:"style"`
+		ColorName   string `json:"color_name"`
+		ColorHex    string `json:"color_hex"`
+	}
+	type setResp struct {
+		ID             string       `json:"id"`
+		Name           string       `json:"name"`
+		Price          float64      `json:"price"`
+		TopVariant     variantBrief `json:"top_variant"`
+		BottomVariant  variantBrief `json:"bottom_variant"`
+		AvailableSizes []string     `json:"available_sizes"`
+	}
+
+	var sets []models.ReadySet
+	if err := h.db.
+		Preload("TopVariant.Product").
+		Preload("BottomVariant.Product").
+		Where("is_active = true").
+		Order("created_at DESC").
+		Find(&sets).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
+		return
+	}
+
+	sizeOrder := []string{"XS", "S", "M", "L", "XL", "XXL"}
+
+	out := make([]setResp, 0, len(sets))
+	for _, s := range sets {
+		r := setResp{ID: s.ID.String(), Name: s.Name, Price: s.Price}
+
+		if s.TopVariant != nil {
+			r.TopVariant = variantBrief{
+				ID:          s.TopVariant.ID.String(),
+				ProductName: s.TopVariant.Product.Name,
+				Style:       s.TopVariant.Product.Style,
+				ColorName:   s.TopVariant.ColorName,
+				ColorHex:    s.TopVariant.ColorHex,
+			}
+		}
+		if s.BottomVariant != nil {
+			r.BottomVariant = variantBrief{
+				ID:          s.BottomVariant.ID.String(),
+				ProductName: s.BottomVariant.Product.Name,
+				Style:       s.BottomVariant.Product.Style,
+				ColorName:   s.BottomVariant.ColorName,
+				ColorHex:    s.BottomVariant.ColorHex,
+			}
+		}
+
+		// Sizes where both top color and bottom color have stock
+		if s.TopVariant != nil && s.BottomVariant != nil {
+			var topSizes, botSizes []string
+			h.db.Model(&models.ProductVariant{}).
+				Where("product_id = ? AND color_hex = ? AND stock_quantity > 0",
+					s.TopVariant.ProductID, s.TopVariant.ColorHex).
+				Pluck("size", &topSizes)
+			h.db.Model(&models.ProductVariant{}).
+				Where("product_id = ? AND color_hex = ? AND stock_quantity > 0",
+					s.BottomVariant.ProductID, s.BottomVariant.ColorHex).
+				Pluck("size", &botSizes)
+
+			botSet := make(map[string]bool, len(botSizes))
+			for _, sz := range botSizes {
+				botSet[sz] = true
+			}
+			topSet := make(map[string]bool, len(topSizes))
+			for _, sz := range topSizes {
+				topSet[sz] = true
+			}
+			for _, sz := range sizeOrder {
+				if topSet[sz] && botSet[sz] {
+					r.AvailableSizes = append(r.AvailableSizes, sz)
+				}
+			}
+		}
+		if r.AvailableSizes == nil {
+			r.AvailableSizes = []string{}
+		}
+
+		// Only show sets that have at least one size in stock for both pieces
+		if len(r.AvailableSizes) > 0 {
+			out = append(out, r)
+		}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
 // ── GET /api/colors ───────────────────────────────────────────────────────────
 
 func (h *ProductHandler) Colors(c *gin.Context) {
