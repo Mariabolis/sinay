@@ -10,6 +10,7 @@ export interface AdminVariant {
   sku:            string
   price_override: number | null
   stock_quantity: number
+  image_url:      string | null
 }
 
 export interface AdminProduct {
@@ -37,6 +38,16 @@ export interface AdminOrderItem {
   }
 }
 
+export interface AdminAddress {
+  full_name:   string | null
+  phone:       string | null
+  governorate: string | null
+  city:        string | null
+  street:      string | null
+  building:    string | null
+  notes:       string | null
+}
+
 export interface AdminOrder {
   id:             string
   status:         string
@@ -48,6 +59,9 @@ export interface AdminOrder {
   payment_status: string
   created_at:     string
   customer_email: string | null
+  customer_name:  string | null
+  customer_phone: string | null
+  address:        AdminAddress | null
   items:          AdminOrderItem[]
 }
 
@@ -58,6 +72,25 @@ export interface AdminCoupon {
   value:      number
   active:     boolean
   expires_at: string | null
+}
+
+export interface AdminCustomer {
+  id:          string
+  email:       string
+  full_name:   string | null
+  phone:       string | null
+  order_count: number
+  created_at:  string
+}
+
+export interface AdminSetting {
+  key:   string
+  value: string
+}
+
+export interface ShippingZone {
+  governorate: string
+  fee:         number
 }
 
 export interface VariantBrief {
@@ -125,15 +158,22 @@ export const adminApi = {
   createVariant: (productId: string, data: Omit<AdminVariant, 'id'>) =>
     client.post<AdminVariant>(`/api/admin/products/${productId}/variants`, data).then(r => r.data),
 
-  updateVariant: (variantId: string, data: { price_override?: number | null; stock_quantity?: number }) =>
+  updateVariant: (variantId: string, data: { price_override?: number | null; stock_quantity?: number; image_url?: string | null }) =>
     client.put<AdminVariant>(`/api/admin/variants/${variantId}`, data).then(r => r.data),
 
   // Orders
   listOrders: () =>
     client.get<AdminOrder[]>('/api/admin/orders').then(r => r.data),
 
+  getOrder: (id: string) =>
+    client.get<AdminOrder>(`/api/admin/orders/${id}`).then(r => r.data),
+
   updateOrderStatus: (id: string, status: string) =>
     client.put(`/api/admin/orders/${id}/status`, { status }).then(r => r.data),
+
+  // Customers
+  listCustomers: () =>
+    client.get<AdminCustomer[]>('/api/admin/customers').then(r => r.data),
 
   // Coupons
   listCoupons: () =>
@@ -144,6 +184,20 @@ export const adminApi = {
 
   toggleCoupon: (id: string) =>
     client.patch(`/api/admin/coupons/${id}/toggle`).then(r => r.data),
+
+  // Settings
+  listSettings: () =>
+    client.get<AdminSetting[]>('/api/admin/settings').then(r => r.data),
+
+  updateSetting: (key: string, value: string) =>
+    client.put<AdminSetting>(`/api/admin/settings/${key}`, { value }).then(r => r.data),
+
+  // Shipping zones
+  listShipping: () =>
+    client.get<ShippingZone[]>('/api/admin/shipping').then(r => r.data),
+
+  updateShipping: (governorate: string, fee: number) =>
+    client.put<ShippingZone>(`/api/admin/shipping/${encodeURIComponent(governorate)}`, { fee }).then(r => r.data),
 
   // Sets
   listSets: () =>

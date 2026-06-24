@@ -27,6 +27,7 @@ type adminVariantResp struct {
 	SKU           string   `json:"sku"`
 	PriceOverride *float64 `json:"price_override"`
 	StockQuantity int      `json:"stock_quantity"`
+	ImageURL      *string  `json:"image_url"`
 }
 
 type adminProductResp struct {
@@ -51,6 +52,7 @@ func toAdminProduct(p models.Product) adminProductResp {
 			SKU:           v.SKU,
 			PriceOverride: v.PriceOverride,
 			StockQuantity: v.StockQuantity,
+			ImageURL:      v.ImageURL,
 		})
 	}
 	return adminProductResp{
@@ -181,6 +183,7 @@ func (h *AdminProductHandler) CreateVariant(c *gin.Context) {
 		SKU:           variant.SKU,
 		PriceOverride: variant.PriceOverride,
 		StockQuantity: variant.StockQuantity,
+		ImageURL:      variant.ImageURL,
 	})
 }
 
@@ -195,6 +198,7 @@ func (h *AdminProductHandler) UpdateVariant(c *gin.Context) {
 	var req struct {
 		PriceOverride *float64 `json:"price_override"`
 		StockQuantity *int     `json:"stock_quantity"`
+		ImageURL      *string  `json:"image_url"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -204,6 +208,7 @@ func (h *AdminProductHandler) UpdateVariant(c *gin.Context) {
 	updates := map[string]any{}
 	if req.PriceOverride != nil { updates["price_override"] = req.PriceOverride }
 	if req.StockQuantity != nil  { updates["stock_quantity"] = *req.StockQuantity }
+	if req.ImageURL != nil       { updates["image_url"] = req.ImageURL }
 
 	if len(updates) > 0 {
 		h.db.Model(&variant).Updates(updates)
@@ -217,6 +222,7 @@ func (h *AdminProductHandler) UpdateVariant(c *gin.Context) {
 		SKU:           variant.SKU,
 		PriceOverride: variant.PriceOverride,
 		StockQuantity: variant.StockQuantity,
+		ImageURL:      variant.ImageURL,
 	})
 }
 

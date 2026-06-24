@@ -59,6 +59,9 @@ func main() {
 	adminOrderHandler    := handlers.NewAdminOrderHandler(database)
 	adminCouponHandler   := handlers.NewAdminCouponHandler(database)
 	adminSetHandler      := handlers.NewAdminSetHandler(database)
+	adminCustomerHandler  := handlers.NewAdminCustomerHandler(database)
+	adminSettingHandler   := handlers.NewAdminSettingHandler(database)
+	adminShippingHandler  := handlers.NewAdminShippingHandler(database)
 
 	requireAuth := middleware.AuthRequired(database, cfg.JWTSecret)
 
@@ -70,10 +73,11 @@ func main() {
 		auth.POST("/refresh",  authHandler.Refresh)
 		auth.GET("/me", requireAuth, authHandler.Me)
 
-		api.GET("/products",       productHandler.List)
-		api.GET("/products/:slug", productHandler.Get)
-		api.GET("/colors",         productHandler.Colors)
-		api.GET("/sets",           productHandler.ListSets)
+		api.GET("/products",        productHandler.List)
+		api.GET("/products/:slug",  productHandler.Get)
+		api.GET("/colors",          productHandler.Colors)
+		api.GET("/sets",            productHandler.ListSets)
+		api.GET("/shipping-fees",   productHandler.ListShippingFees)
 
 		cart := api.Group("/cart")
 		cart.Use(middleware.OptionalAuth(cfg.JWTSecret))
@@ -122,6 +126,16 @@ func main() {
 			admin.POST("/sets",                       adminSetHandler.Create)
 			admin.PUT("/sets/:id",                    adminSetHandler.Update)
 			admin.DELETE("/sets/:id",                 adminSetHandler.Delete)
+
+			admin.GET("/orders/:id",                  adminOrderHandler.Get)
+
+			admin.GET("/customers",                   adminCustomerHandler.List)
+
+			admin.GET("/settings",                    adminSettingHandler.List)
+			admin.PUT("/settings/:key",               adminSettingHandler.Update)
+
+			admin.GET("/shipping",                    adminShippingHandler.List)
+			admin.PUT("/shipping/:governorate",       adminShippingHandler.Update)
 		}
 	}
 

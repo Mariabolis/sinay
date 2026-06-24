@@ -28,11 +28,12 @@ export default function AdminProductsPage() {
     }
   }
 
-  const handleVariantSave = async (variantId: string, stock: number, priceOverride: number | null) => {
+  const handleVariantSave = async (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => {
     try {
       const updated = await adminApi.updateVariant(variantId, {
         stock_quantity: stock,
         price_override: priceOverride,
+        image_url:      imageUrl,
       })
       setProducts(ps =>
         ps.map(p => ({
@@ -78,7 +79,7 @@ interface ProductRowProps {
   expanded:       boolean
   onToggle:       () => void
   onProductSave:  (id: string, name: string, price: number, isActive: boolean) => Promise<boolean>
-  onVariantSave:  (variantId: string, stock: number, priceOverride: number | null) => Promise<boolean>
+  onVariantSave:  (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => Promise<boolean>
 }
 
 function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave }: ProductRowProps) {
@@ -194,7 +195,7 @@ function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave 
 
 interface VariantRowProps {
   variant:  AdminVariant
-  onSave:   (variantId: string, stock: number, priceOverride: number | null) => Promise<boolean>
+  onSave:   (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => Promise<boolean>
 }
 
 function VariantRow({ variant, onSave }: VariantRowProps) {
@@ -202,16 +203,23 @@ function VariantRow({ variant, onSave }: VariantRowProps) {
   const [priceOverride, setPriceOverride] = useState(
     variant.price_override != null ? variant.price_override.toString() : ''
   )
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
+  const [imageUrl, setImageUrl] = useState(variant.image_url ?? '')
+  const [saving,   setSaving]   = useState(false)
+  const [saved,    setSaved]    = useState(false)
 
   const dirty =
     parseInt(stock, 10) !== variant.stock_quantity ||
-    (priceOverride === '' ? null : parseFloat(priceOverride)) !== variant.price_override
+    (priceOverride === '' ? null : parseFloat(priceOverride)) !== variant.price_override ||
+    (imageUrl || null) !== variant.image_url
 
   const save = async () => {
     setSaving(true)
-    const ok = await onSave(variant.id, parseInt(stock, 10) || 0, priceOverride !== '' ? parseFloat(priceOverride) : null)
+    const ok = await onSave(
+      variant.id,
+      parseInt(stock, 10) || 0,
+      priceOverride !== '' ? parseFloat(priceOverride) : null,
+      imageUrl.trim() || null,
+    )
     setSaving(false)
     if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
   }
@@ -246,6 +254,16 @@ function VariantRow({ variant, onSave }: VariantRowProps) {
                      focus:border-[#8B7568] focus:outline-none transition-colors"
           value={stock}
           onChange={e => setStock(e.target.value)}
+        />
+      </td>
+      <td className="py-2 pr-3">
+        <input
+          type="url"
+          className="w-40 text-xs text-[#4A3F38] bg-transparent border-b border-transparent
+                     focus:border-[#8B7568] focus:outline-none transition-colors placeholder:text-[#c4b9b2]"
+          placeholder="https://…"
+          value={imageUrl}
+          onChange={e => setImageUrl(e.target.value)}
         />
       </td>
       <td className="py-2 pl-3 text-xs text-right">

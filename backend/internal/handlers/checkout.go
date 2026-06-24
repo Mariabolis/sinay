@@ -140,7 +140,17 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 		}
 	}
 
-	total := subtotal - discount
+	// Look up shipping fee by governorate
+	shippingFee := 75.0 // default if governorate not found
+	gov := derefStr(resolvedAddr.Governorate)
+	if gov != "" {
+		var zone models.ShippingZone
+		if h.db.Where("governorate = ?", gov).First(&zone).Error == nil {
+			shippingFee = zone.Fee
+		}
+	}
+
+	total := subtotal - discount + shippingFee
 	amountCents := int(math.Round(total * 100))
 
 	// Initial status depends on payment method
@@ -157,6 +167,7 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 		PaymentMethod: req.PaymentMethod,
 		Subtotal:      subtotal,
 		Discount:      discount,
+		ShippingFee:   shippingFee,
 		Total:         total,
 		CouponCode:    cart.CouponCode,
 	}
@@ -360,6 +371,7 @@ type orderResp struct {
 	PaymentMethod string          `json:"payment_method"`
 	Subtotal      float64         `json:"subtotal"`
 	Discount      float64         `json:"discount"`
+	ShippingFee   float64         `json:"shipping_fee"`
 	Total         float64         `json:"total"`
 	CouponCode    *string         `json:"coupon_code"`
 	Items         []orderItemResp `json:"items"`
@@ -407,6 +419,7 @@ func toOrderResp(o models.Order) orderResp {
 		PaymentMethod: o.PaymentMethod,
 		Subtotal:      o.Subtotal,
 		Discount:      o.Discount,
+		ShippingFee:   o.ShippingFee,
 		Total:         o.Total,
 		CouponCode:    o.CouponCode,
 		Items:         items,

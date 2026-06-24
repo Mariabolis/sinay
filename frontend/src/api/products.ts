@@ -68,6 +68,15 @@ export const setsApi = {
   list: () => client.get<ReadySet[]>('/api/sets').then(r => r.data),
 }
 
+export interface ShippingZone {
+  governorate: string
+  fee:         number
+}
+
+export const shippingApi = {
+  list: () => client.get<ShippingZone[]>('/api/shipping-fees').then(r => r.data),
+}
+
 export const productsApi = {
   list(filters?: ProductFilters) {
     const params = new URLSearchParams()

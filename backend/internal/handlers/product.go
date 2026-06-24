@@ -290,6 +290,17 @@ func (h *ProductHandler) ListSets(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+// ── GET /api/shipping-fees ────────────────────────────────────────────────────
+
+func (h *ProductHandler) ListShippingFees(c *gin.Context) {
+	var zones []models.ShippingZone
+	h.db.Order("governorate ASC").Find(&zones)
+	if zones == nil {
+		zones = []models.ShippingZone{}
+	}
+	c.JSON(http.StatusOK, zones)
+}
+
 // ── GET /api/colors ───────────────────────────────────────────────────────────
 
 func (h *ProductHandler) Colors(c *gin.Context) {

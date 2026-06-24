@@ -42,6 +42,7 @@ type ProductVariant struct {
 	SKU           string     `gorm:"column:sku;type:varchar(100);uniqueIndex;not null"`
 	PriceOverride *float64   `gorm:"type:numeric(10,2)"`
 	StockQuantity int        `gorm:"not null;default:0"`
+	ImageURL      *string    `gorm:"type:varchar(500)"`
 
 	Product *Product `gorm:"foreignKey:ProductID"`
 	Images  []ProductImage `gorm:"foreignKey:VariantID"`

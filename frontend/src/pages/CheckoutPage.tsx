@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import { checkoutApi, type Address, type AddressInput } from '../api/checkout'
+import { shippingApi } from '../api/products'
 
 const GOVERNORATES = [
   'Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Red Sea', 'Beheira',
@@ -29,6 +30,7 @@ export default function CheckoutPage() {
   const [paymentMethod,  setPaymentMethod]  = useState<'card' | 'cod'>('card')
   const [submitting,     setSubmitting]     = useState(false)
   const [error,          setError]          = useState<string | null>(null)
+  const [feeMap,         setFeeMap]         = useState<Record<string, number>>({})
 
   // Redirect guests to login
   useEffect(() => {
@@ -54,6 +56,13 @@ export default function CheckoutPage() {
       })
       .catch(() => setShowNewForm(true))
   }, [user])
+
+  // Load per-governorate shipping fees
+  useEffect(() => {
+    shippingApi.list()
+      .then(zones => setFeeMap(Object.fromEntries(zones.map(z => [z.governorate, z.fee]))))
+      .catch(() => {/* use defaults silently */})
+  }, [])
 
   function setField(k: keyof AddressInput, v: string | boolean) {
     setForm(f => ({ ...f, [k]: v }))
@@ -97,7 +106,13 @@ export default function CheckoutPage() {
 
   const subtotal = cart.subtotal
   const discount = cart.discount
-  const total    = cart.total
+
+  // Determine the governorate currently selected
+  const activeGov = showNewForm
+    ? form.governorate
+    : (addresses.find(a => a.id === selectedAddrId)?.governorate ?? '')
+  const shippingFee = activeGov ? (feeMap[activeGov] ?? 75) : null
+  const total = subtotal - discount + (shippingFee ?? 0)
 
   return (
     <main className="max-w-[1080px] mx-auto px-6 py-12">
@@ -249,8 +264,18 @@ export default function CheckoutPage() {
                     <span>Discount</span><span>− EGP {discount.toFixed(0)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-mocha">
+                  <span>Shipping</span>
+                  <span>
+                    {shippingFee !== null
+                      ? `EGP ${shippingFee.toFixed(0)}`
+                      : <span className="text-mocha/40 italic text-[11px]">select governorate</span>
+                    }
+                  </span>
+                </div>
                 <div className="flex justify-between font-semibold text-[15px] text-ink pt-2 border-t border-mocha/10">
-                  <span>Total</span><span>EGP {total.toFixed(0)}</span>
+                  <span>Total</span>
+                  <span>{shippingFee !== null ? `EGP ${total.toFixed(0)}` : '—'}</span>
                 </div>
               </div>
 
@@ -300,7 +325,9 @@ export default function CheckoutPage() {
               >
                 {submitting
                   ? (paymentMethod === 'cod' ? 'Placing order…' : 'Redirecting to payment…')
-                  : (paymentMethod === 'cod' ? `Place Order · EGP ${total.toFixed(0)}` : `Pay EGP ${total.toFixed(0)}`)
+                  : (paymentMethod === 'cod'
+                      ? `Place Order · EGP ${shippingFee !== null ? total.toFixed(0) : '—'}`
+                      : `Pay EGP ${shippingFee !== null ? total.toFixed(0) : '—'}`)
                 }
               </button>
 

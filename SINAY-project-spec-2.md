@@ -79,6 +79,13 @@ Key decision: **tops and bottoms are separate, independently-purchasable product
 ## 4. Database Schema (PostgreSQL)
 
 ```sql
+-- SETTINGS  (key-value store the owner can edit without a code change — e.g. shipping fee)
+CREATE TABLE settings (
+  key          VARCHAR(100) PRIMARY KEY,
+  value        VARCHAR(255) NOT NULL
+);
+-- seeded with: ('shipping_flat_fee', '0')
+
 -- USERS
 CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -255,13 +262,17 @@ GET    /api/orders/:id
 
 ADMIN (protected, role=admin)
 POST   /api/admin/products
-PUT    /api/admin/products/:id
+PUT    /api/admin/products/:id        (incl. is_active toggle to deactivate/discontinue)
 POST   /api/admin/products/:id/variants
 PUT    /api/admin/variants/:id        (stock, price)
 GET    /api/admin/orders
+GET    /api/admin/orders/:id          (full detail: items, customer name/phone, shipping address — what the owner needs to actually pack and ship)
 PUT    /api/admin/orders/:id/status
 POST   /api/admin/coupons
+GET    /api/admin/customers           (read-only list: name, email, phone, order count — for support/lookup)
 GET    /api/admin/dashboard/summary   → { total_revenue, orders_count, orders_today, top_selling_variants[], low_stock_variants[] }
+GET    /api/admin/settings            → current key-value settings (e.g. shipping_flat_fee)
+PUT    /api/admin/settings/:key       → { value } — lets the owner change shipping fee (and future config) without a code deploy
 ```
 
 ---
@@ -366,7 +377,7 @@ sinay/
 > "Implement internal/services/payment/paymob.go per section 6: GetAuthToken, RegisterOrder, GetPaymentKey, and a VerifyWebhookHMAC function. Wire POST /api/checkout to call these in sequence and return the iframe URL. Implement POST /api/payments/paymob/callback to verify HMAC and update order/payment status."
 
 **Admin:**
-> "Build a protected /admin route (role=admin) with: a products table (inline edit for name, price, and per-variant stock), an orders table (status dropdown: pending/paid/processing/shipped/delivered/cancelled), and a dashboard overview page showing total revenue, order counts, best-selling variants, and low-stock alerts via GET /api/admin/dashboard/summary."
+> "Build a protected /admin route (role=admin) with: a products table (inline edit for name, price, per-variant stock, a plain image-URL text field per variant — no upload integration yet, just store the pasted URL — and an active/inactive toggle), an orders table (status dropdown: pending/paid/processing/shipped/delivered/cancelled, showing payment_method) that opens a detail view per order with items + customer name/phone + shipping address, a read-only customers list, a coupons section, a settings page to edit the flat shipping fee, and a dashboard overview page showing total revenue, order counts, best-selling variants, and low-stock alerts via GET /api/admin/dashboard/summary."
 
 ---
 
@@ -374,7 +385,9 @@ sinay/
 
 - ✅ Language: English only — locked.
 - ✅ Auth: registration required before checkout, no guest checkout — locked.
-- ⏳ Shipping fee logic (flat rate vs by governorate) — still undecided. The build will ship with one flat placeholder fee (e.g. a single `SHIPPING_FLAT_FEE` config value) so checkout works end-to-end now; swap it for a per-governorate table later without touching the order flow.
+- ✅ Cash on Delivery added alongside Paymob card payment — locked.
+- ⏳ **Product images in admin** — deferred Cloudinary upload for now to not block the rest of the admin dashboard. Building with a simple image-URL field instead: admin uploads the photo anywhere (Cloudinary's own free dashboard, imgur, etc.) and pastes the link into the product form. Works today, zero extra backend work. Swap in the real upload button (§ below, Cloudinary) as a quick follow-up whenever — it only touches one endpoint and one form field, nothing else depends on it.
+- ⏳ Shipping fee logic (flat rate vs by governorate) — still undecided, but the owner can now edit the flat fee value directly from `/admin/settings` without a code deploy (see §5).
 - Pre-bundled "sets" (matching top+bottom in one print) are supported by `products.type = 'set'` if you want some fixed combos alongside the free-mix builder.
 - Confirm with Paymob whether you're on their **Accept** (card) integration only, or also enabling Fawry/wallet — each has a separate `integration_id`, and checkout can offer multiple methods from one payment key.
 
