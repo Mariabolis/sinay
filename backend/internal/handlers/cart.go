@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -176,6 +178,12 @@ func (h *CartHandler) computeDiscount(cart *models.Cart, subtotal float64) float
 		return 0
 	}
 	if coupon.ExpiresAt != nil && coupon.ExpiresAt.Before(time.Now()) {
+		return 0
+	}
+	if coupon.UsageLimit != nil && coupon.TimesUsed >= *coupon.UsageLimit {
+		return 0
+	}
+	if coupon.MinOrderValue != nil && subtotal < *coupon.MinOrderValue {
 		return 0
 	}
 	switch coupon.Type {
@@ -518,13 +526,19 @@ func (h *CartHandler) ApplyCoupon(c *gin.Context) {
 		return
 	}
 
+	code := strings.ToUpper(strings.TrimSpace(req.Code))
+
 	var coupon models.Coupon
-	if h.db.Where("code = ? AND active = true", req.Code).First(&coupon).Error != nil {
+	if h.db.Where("code = ? AND active = true", code).First(&coupon).Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "coupon not found or inactive"})
 		return
 	}
 	if coupon.ExpiresAt != nil && coupon.ExpiresAt.Before(time.Now()) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "coupon has expired"})
+		return
+	}
+	if coupon.UsageLimit != nil && coupon.TimesUsed >= *coupon.UsageLimit {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "coupon usage limit reached"})
 		return
 	}
 
@@ -533,6 +547,22 @@ func (h *CartHandler) ApplyCoupon(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not resolve cart"})
 		return
 	}
+
+	if coupon.MinOrderValue != nil {
+		var items []models.CartItem
+		h.db.Where("cart_id = ?", cart.ID).Find(&items)
+		var subtotal float64
+		for _, item := range items {
+			subtotal += item.UnitPrice * float64(item.Quantity)
+		}
+		if subtotal < *coupon.MinOrderValue {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"error": fmt.Sprintf("minimum order of EGP %.0f required for this coupon", *coupon.MinOrderValue),
+			})
+			return
+		}
+	}
+
 	cart.CouponCode = &coupon.Code
 	h.db.Save(cart)
 

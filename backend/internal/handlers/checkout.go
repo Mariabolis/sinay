@@ -197,6 +197,12 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 				Where("id = ? AND stock_quantity >= ?", ci.VariantID, ci.Quantity).
 				UpdateColumn("stock_quantity", gorm.Expr("stock_quantity - ?", ci.Quantity))
 		}
+		// Increment coupon usage counter
+		if cart.CouponCode != nil && *cart.CouponCode != "" {
+			h.db.Model(&models.Coupon{}).
+				Where("code = ?", *cart.CouponCode).
+				UpdateColumn("times_used", gorm.Expr("times_used + 1"))
+		}
 		// Clear the cart
 		h.db.Where("cart_id = ?", cart.ID).Delete(&models.CartItem{})
 		c.JSON(http.StatusCreated, gin.H{"order_id": order.ID.String()})

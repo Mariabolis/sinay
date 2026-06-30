@@ -128,12 +128,34 @@ export interface InventoryResponse {
 }
 
 export interface AdminCoupon {
-  id:         string
-  code:       string
-  type:       'percent' | 'fixed'
-  value:      number
-  active:     boolean
-  expires_at: string | null
+  id:              string
+  code:            string
+  type:            'percent' | 'fixed'
+  value:           number
+  active:          boolean
+  expires_at:      string | null
+  min_order_value: number | null
+  usage_limit:     number | null
+  times_used:      number
+  created_at:      string
+  status:          'Active' | 'Expired' | 'Used Up' | 'Disabled'
+}
+
+export interface AdminCouponsListResponse {
+  coupons:  AdminCoupon[]
+  total:    number
+  page:     number
+  per_page: number
+}
+
+export interface CouponInput {
+  code:            string
+  type:            'percent' | 'fixed'
+  value:           number
+  active?:         boolean
+  expires_at?:     string | null
+  min_order_value?: number | null
+  usage_limit?:    number | null
 }
 
 export interface AdminCustomer {
@@ -320,14 +342,25 @@ export const adminApi = {
     client.get<AdminCustomerDetail>(`/api/admin/customers/${id}`).then(r => r.data),
 
   // Coupons
-  listCoupons: () =>
-    client.get<AdminCoupon[]>('/api/admin/coupons').then(r => r.data),
+  listCoupons: (params?: { page?: number; per_page?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.page)     qs.set('page',     String(params.page))
+    if (params?.per_page) qs.set('per_page', String(params.per_page))
+    const q = qs.toString()
+    return client.get<AdminCouponsListResponse>(`/api/admin/coupons${q ? '?' + q : ''}`).then(r => r.data)
+  },
 
-  createCoupon: (data: { code: string; type: 'percent' | 'fixed'; value: number; expires_at?: string }) =>
+  createCoupon: (data: CouponInput) =>
     client.post<AdminCoupon>('/api/admin/coupons', data).then(r => r.data),
 
+  updateCoupon: (id: string, data: CouponInput) =>
+    client.put<AdminCoupon>(`/api/admin/coupons/${id}`, data).then(r => r.data),
+
+  deleteCoupon: (id: string) =>
+    client.delete(`/api/admin/coupons/${id}`).then(r => r.data),
+
   toggleCoupon: (id: string) =>
-    client.patch(`/api/admin/coupons/${id}/toggle`).then(r => r.data),
+    client.patch<AdminCoupon>(`/api/admin/coupons/${id}/toggle`).then(r => r.data),
 
   // Settings
   listSettings: () =>

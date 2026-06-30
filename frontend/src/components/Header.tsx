@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 
 const NAV_LINKS = [
+  { label: 'Home',            href: '/'               },
   { label: 'Shop',            href: '/shop'           },
   { label: 'Ready-made Sets', href: '/#sets'          },
   { label: 'Build Your Own',  href: '/build-your-set' },

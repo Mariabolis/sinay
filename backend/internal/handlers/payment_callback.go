@@ -110,12 +110,19 @@ func (h *PaymentCallbackHandler) PaymobCallback(c *gin.Context) {
 				UpdateColumn("stock_quantity", gorm.Expr("stock_quantity - ?", oi.Quantity))
 		}
 
-		// Clear the buyer's cart (items only; keep the cart row for future use)
+		// Clear the buyer's cart and increment coupon usage counter
 		var ord models.Order
-		if h.db.First(&ord, "id = ?", pmt.OrderID).Error == nil && ord.UserID != nil {
-			var buyerCart models.Cart
-			if h.db.Where("user_id = ?", *ord.UserID).First(&buyerCart).Error == nil {
-				h.db.Where("cart_id = ?", buyerCart.ID).Delete(&models.CartItem{})
+		if h.db.First(&ord, "id = ?", pmt.OrderID).Error == nil {
+			if ord.CouponCode != nil && *ord.CouponCode != "" {
+				h.db.Model(&models.Coupon{}).
+					Where("code = ?", *ord.CouponCode).
+					UpdateColumn("times_used", gorm.Expr("times_used + 1"))
+			}
+			if ord.UserID != nil {
+				var buyerCart models.Cart
+				if h.db.Where("user_id = ?", *ord.UserID).First(&buyerCart).Error == nil {
+					h.db.Where("cart_id = ?", buyerCart.ID).Delete(&models.CartItem{})
+				}
 			}
 		}
 	} else {

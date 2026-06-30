@@ -1,0 +1,5 @@
+ALTER TABLE coupons
+    ADD COLUMN IF NOT EXISTS min_order_value NUMERIC(10,2),
+    ADD COLUMN IF NOT EXISTS usage_limit     INT,
+    ADD COLUMN IF NOT EXISTS times_used      INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS created_at      TIMESTAMPTZ NOT NULL DEFAULT now();

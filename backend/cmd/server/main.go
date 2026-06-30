@@ -138,6 +138,8 @@ func main() {
 
 			admin.GET("/coupons",                     adminCouponHandler.List)
 			admin.POST("/coupons",                    adminCouponHandler.Create)
+			admin.PUT("/coupons/:id",                 adminCouponHandler.Update)
+			admin.DELETE("/coupons/:id",              adminCouponHandler.Delete)
 			admin.PATCH("/coupons/:id/toggle",        adminCouponHandler.Toggle)
 
 			admin.GET("/sets",                        adminSetHandler.List)
