@@ -56,12 +56,22 @@ func main() {
 	callbackHandler      := handlers.NewPaymentCallbackHandler(database, paymobSvc)
 	adminDashHandler     := handlers.NewAdminDashboardHandler(database)
 	adminProductHandler  := handlers.NewAdminProductHandler(database)
-	adminOrderHandler    := handlers.NewAdminOrderHandler(database)
+	adminOrderHandler     := handlers.NewAdminOrderHandler(database)
+	adminInventoryHandler := handlers.NewAdminInventoryHandler(database)
 	adminCouponHandler   := handlers.NewAdminCouponHandler(database)
 	adminSetHandler      := handlers.NewAdminSetHandler(database)
 	adminCustomerHandler  := handlers.NewAdminCustomerHandler(database)
 	adminSettingHandler   := handlers.NewAdminSettingHandler(database)
 	adminShippingHandler  := handlers.NewAdminShippingHandler(database)
+
+	uploadHandler, err := handlers.NewUploadHandler(
+		cfg.CloudinaryCloudName,
+		cfg.CloudinaryAPIKey,
+		cfg.CloudinaryAPISecret,
+	)
+	if err != nil {
+		log.Fatalf("cloudinary init failed: %v", err)
+	}
 
 	requireAuth := middleware.AuthRequired(database, cfg.JWTSecret)
 
@@ -94,7 +104,9 @@ func main() {
 
 		// Auth-required routes
 		api.POST("/checkout",      requireAuth, checkoutHandler.Checkout)
+		api.GET("/orders",         requireAuth, checkoutHandler.ListOrders)
 		api.GET("/orders/:id",     requireAuth, checkoutHandler.GetOrder)
+		api.PUT("/auth/me",        requireAuth, authHandler.UpdateMe)
 		api.GET("/addresses",      requireAuth, addressHandler.List)
 		api.POST("/addresses",     requireAuth, addressHandler.Create)
 		api.DELETE("/addresses/:id", requireAuth, addressHandler.Delete)
@@ -111,9 +123,15 @@ func main() {
 
 			admin.GET("/products",                    adminProductHandler.List)
 			admin.POST("/products",                   adminProductHandler.Create)
+			admin.GET("/products/:id",                adminProductHandler.GetOne)
 			admin.PUT("/products/:id",                adminProductHandler.Update)
+			admin.DELETE("/products/:id",             adminProductHandler.Delete)
 			admin.POST("/products/:id/variants",      adminProductHandler.CreateVariant)
 			admin.PUT("/variants/:id",                adminProductHandler.UpdateVariant)
+			admin.DELETE("/variants/:id",             adminProductHandler.DeleteVariant)
+
+			admin.GET("/inventory",                   adminInventoryHandler.List)
+			admin.PUT("/inventory/:variant_id",       adminInventoryHandler.UpdateStock)
 
 			admin.GET("/orders",                      adminOrderHandler.List)
 			admin.PUT("/orders/:id/status",           adminOrderHandler.UpdateStatus)
@@ -130,12 +148,15 @@ func main() {
 			admin.GET("/orders/:id",                  adminOrderHandler.Get)
 
 			admin.GET("/customers",                   adminCustomerHandler.List)
+			admin.GET("/customers/:id",               adminCustomerHandler.Get)
 
 			admin.GET("/settings",                    adminSettingHandler.List)
 			admin.PUT("/settings/:key",               adminSettingHandler.Update)
 
 			admin.GET("/shipping",                    adminShippingHandler.List)
 			admin.PUT("/shipping/:governorate",       adminShippingHandler.Update)
+
+			admin.POST("/upload",                     uploadHandler.Upload)
 		}
 	}
 

@@ -168,6 +168,36 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	})
 }
 
+// PUT /api/auth/me
+func (h *AuthHandler) UpdateMe(c *gin.Context) {
+	user := c.MustGet("user").(models.User)
+	var req struct {
+		FullName string `json:"full_name"`
+		Phone    string `json:"phone"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updates := map[string]any{}
+	if req.FullName != "" {
+		updates["full_name"] = req.FullName
+	}
+	if req.Phone != "" {
+		updates["phone"] = req.Phone
+	}
+	if len(updates) > 0 {
+		h.db.Model(&user).Updates(updates)
+	}
+	h.db.First(&user, "id = ?", user.ID)
+	c.JSON(http.StatusOK, UserResponse{
+		ID:       user.ID.String(),
+		Email:    user.Email,
+		FullName: derefStr(user.FullName),
+		Role:     user.Role,
+	})
+}
+
 // ── token helpers ─────────────────────────────────────────────────────────────
 
 func (h *AuthHandler) issueTokens(user models.User) (TokenResponse, error) {

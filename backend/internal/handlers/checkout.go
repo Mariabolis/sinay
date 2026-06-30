@@ -319,6 +319,29 @@ func splitName(name string) (string, string) {
 	return parts[0], strings.Join(parts[1:], " ")
 }
 
+// ── GET /api/orders ────────────────────────────────────────────────────────────
+
+func (h *CheckoutHandler) ListOrders(c *gin.Context) {
+	user := c.MustGet("user").(models.User)
+	var orders []models.Order
+	if err := h.db.
+		Preload("Items.Variant.Product").
+		Preload("Items.Variant").
+		Preload("Items").
+		Preload("Payment").
+		Where("user_id = ?", user.ID).
+		Order("created_at DESC").
+		Find(&orders).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
+		return
+	}
+	resp := make([]orderResp, len(orders))
+	for i, o := range orders {
+		resp[i] = toOrderResp(o)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // ── GET /api/orders/:id ───────────────────────────────────────────────────────
 
 func (h *CheckoutHandler) GetOrder(c *gin.Context) {
@@ -346,10 +369,11 @@ func (h *CheckoutHandler) GetOrder(c *gin.Context) {
 // ── response types ────────────────────────────────────────────────────────────
 
 type orderVariantResp struct {
-	ID        string `json:"id"`
-	ColorName string `json:"color_name"`
-	ColorHex  string `json:"color_hex"`
-	Size      string `json:"size"`
+	ID        string  `json:"id"`
+	ColorName string  `json:"color_name"`
+	ColorHex  string  `json:"color_hex"`
+	Size      string  `json:"size"`
+	ImageURL  *string `json:"image_url"`
 	Product   struct {
 		Name  string `json:"name"`
 		Type  string `json:"type"`
@@ -393,6 +417,7 @@ func toOrderResp(o models.Order) orderResp {
 			vr.ColorName = v.ColorName
 			vr.ColorHex = v.ColorHex
 			vr.Size = v.Size
+			vr.ImageURL = v.ImageURL
 			if p := v.Product; p != nil {
 				vr.Product.Name = p.Name
 				vr.Product.Type = p.Type

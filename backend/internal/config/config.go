@@ -28,6 +28,10 @@ type Config struct {
 	PaymobIntID      string
 	PaymobIframeID   string
 	PaymobHMACSecret string
+	// Cloudinary
+	CloudinaryCloudName string
+	CloudinaryAPIKey    string
+	CloudinaryAPISecret string
 }
 
 func Load() *Config {
@@ -53,7 +57,10 @@ func Load() *Config {
 		PaymobAPIKey:     getEnv("PAYMOB_API_KEY", ""),
 		PaymobIntID:      getEnv("PAYMOB_INTEGRATION_ID", ""),
 		PaymobIframeID:   getEnv("PAYMOB_IFRAME_ID", ""),
-		PaymobHMACSecret: getEnv("PAYMOB_HMAC_SECRET", ""),
+		PaymobHMACSecret:    getEnv("PAYMOB_HMAC_SECRET", ""),
+		CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
 	}
 }
 

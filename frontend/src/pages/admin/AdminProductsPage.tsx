@@ -1,73 +1,203 @@
-import { useEffect, useState } from 'react'
-import type { AdminProduct, AdminVariant } from '../../api/admin'
+import { useEffect, useState, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import type { AdminProduct } from '../../api/admin'
 import { adminApi } from '../../api/admin'
 
+const STYLE_LABELS: Record<string, string> = {
+  classic_short_sleeve: 'Classic Short Sleeve',
+  sleeveless:           'Sleeveless',
+  relaxed_shirt:        'Relaxed Shirt',
+  shorts:               'Shorts',
+  bermuda:              'Bermuda',
+  wide_leg:             'Wide Leg',
+}
+
+const ALL_STYLES = Object.keys(STYLE_LABELS)
+
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<AdminProduct[]>([])
-  const [error, setError]       = useState('')
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  useEffect(() => {
-    adminApi.listProducts()
-      .then(setProducts)
-      .catch(() => setError('Failed to load products'))
-  }, [])
+  const [products,  setProducts]  = useState<AdminProduct[]>([])
+  const [total,     setTotal]     = useState(0)
+  const [page,      setPage]      = useState(1)
+  const [search,    setSearch]    = useState('')
+  const [styleFilter, setStyleFilter] = useState('')
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState('')
 
-  const toggleExpand = (id: string) =>
-    setExpanded(prev => (prev === id ? null : id))
+  // Delete modal state
+  const [deleting,  setDeleting]  = useState<AdminProduct | null>(null)
+  const [deleteErr, setDeleteErr] = useState('')
+  const [delBusy,   setDelBusy]   = useState(false)
 
-  const handleProductSave = async (id: string, name: string, price: number, isActive: boolean) => {
-    try {
-      const updated = await adminApi.updateProduct(id, { name, base_price: price, is_active: isActive })
-      setProducts(ps => ps.map(p => (p.id === id ? updated : p)))
-      return true
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Save failed'
-      alert(`Error: ${msg}`)
-      return false
-    }
-  }
+  const PER_PAGE = 20
 
-  const handleVariantSave = async (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => {
-    try {
-      const updated = await adminApi.updateVariant(variantId, {
-        stock_quantity: stock,
-        price_override: priceOverride,
-        image_url:      imageUrl,
+  const load = useCallback(() => {
+    setLoading(true)
+    setError('')
+    adminApi.listProducts({ page, per_page: PER_PAGE, search: search || undefined, style: styleFilter || undefined })
+      .then(res => {
+        setProducts(res.products ?? [])
+        setTotal(res.total ?? 0)
       })
-      setProducts(ps =>
-        ps.map(p => ({
-          ...p,
-          variants: p.variants.map(v => (v.id === variantId ? updated : v)),
-        }))
-      )
-      return true
+      .catch(() => setError('Failed to load products'))
+      .finally(() => setLoading(false))
+  }, [page, search, styleFilter])
+
+  useEffect(() => { load() }, [load])
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1) }, [search, styleFilter])
+
+  async function confirmDelete() {
+    if (!deleting) return
+    setDelBusy(true)
+    setDeleteErr('')
+    try {
+      await adminApi.deleteProduct(deleting.id)
+      setDeleting(null)
+      load()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Save failed'
-      alert(`Error: ${msg}`)
-      return false
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setDeleteErr(msg ?? 'Delete failed — product may have linked orders')
+    } finally {
+      setDelBusy(false)
     }
   }
 
-  if (error)            return <p className="text-red-500">{error}</p>
-  if (!products.length) return <p className="text-[#8B7568]">Loading…</p>
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold text-[#4A3F38]">Products</h1>
-
-      <div className="space-y-3">
-        {products.map(p => (
-          <ProductRow
-            key={p.id}
-            product={p}
-            expanded={expanded === p.id}
-            onToggle={() => toggleExpand(p.id)}
-            onProductSave={handleProductSave}
-            onVariantSave={handleVariantSave}
-          />
-        ))}
+    <div className="max-w-6xl space-y-5">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-[#4A3F38]">Products</h1>
+        <Link
+          to="/admin/products/new"
+          className="px-4 py-2 rounded-lg bg-[#8B7568] text-white text-sm font-medium
+                     hover:bg-[#7a6659] transition-colors"
+        >
+          + New Product
+        </Link>
       </div>
+
+      {/* ── Filters ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3">
+        <input
+          type="search"
+          placeholder="Search by name…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-56 border border-[#d8cfc5] rounded-lg px-3 py-2 text-sm text-[#4A3F38]
+                     placeholder:text-[#b0a89f] focus:outline-none focus:border-[#8B7568] bg-white"
+        />
+        <select
+          value={styleFilter}
+          onChange={e => setStyleFilter(e.target.value)}
+          className="border border-[#d8cfc5] rounded-lg px-3 py-2 text-sm text-[#4A3F38]
+                     focus:outline-none focus:border-[#8B7568] bg-white"
+        >
+          <option value="">All styles</option>
+          {ALL_STYLES.map(s => (
+            <option key={s} value={s}>{STYLE_LABELS[s]}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      {error ? (
+        <p className="text-red-500 text-sm">{error}</p>
+      ) : loading ? (
+        <p className="text-[#8B7568] text-sm">Loading…</p>
+      ) : products.length === 0 ? (
+        <p className="text-[#8B7568] text-sm">No products found.</p>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#F4EEE8] text-[#8B7568] text-xs font-medium">
+                <th className="text-left px-5 py-3 w-16">Image</th>
+                <th className="text-left px-4 py-3">Name</th>
+                <th className="text-left px-4 py-3">Style</th>
+                <th className="text-left px-4 py-3">Type</th>
+                <th className="text-right px-4 py-3">Price</th>
+                <th className="text-right px-4 py-3">Stock</th>
+                <th className="text-center px-4 py-3">Status</th>
+                <th className="px-4 py-3 w-28" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F4EEE8]">
+              {products.map(p => (
+                <ProductRow
+                  key={p.id}
+                  product={p}
+                  onEdit={() => navigate(`/admin/products/${p.id}/edit`)}
+                  onDelete={() => { setDeleteErr(''); setDeleting(p) }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Pagination ──────────────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2 text-sm text-[#8B7568]">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 rounded border border-[#d8cfc5] hover:bg-[#ECE3D9]
+                       disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            ← Prev
+          </button>
+          <span>Page {page} of {totalPages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1 rounded border border-[#d8cfc5] hover:bg-[#ECE3D9]
+                       disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ────────────────────────────────────── */}
+      {deleting && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
+          onClick={e => { if (e.target === e.currentTarget) setDeleting(null) }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-base font-semibold text-[#4A3F38] mb-2">Delete product?</h2>
+            <p className="text-sm text-[#8B7568] mb-4">
+              <strong className="text-[#4A3F38]">"{deleting.name}"</strong> and all its variants will
+              be permanently removed. This cannot be undone.
+            </p>
+            {deleteErr && (
+              <p className="text-xs text-red-500 mb-3">{deleteErr}</p>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleting(null)}
+                className="px-4 py-2 rounded-lg text-sm text-[#4A3F38] border border-[#d8cfc5]
+                           hover:bg-[#ECE3D9] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={delBusy}
+                className="px-4 py-2 rounded-lg text-sm bg-red-500 text-white
+                           hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {delBusy ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -75,210 +205,78 @@ export default function AdminProductsPage() {
 // ── ProductRow ─────────────────────────────────────────────────────────────────
 
 interface ProductRowProps {
-  product:        AdminProduct
-  expanded:       boolean
-  onToggle:       () => void
-  onProductSave:  (id: string, name: string, price: number, isActive: boolean) => Promise<boolean>
-  onVariantSave:  (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => Promise<boolean>
+  product:  AdminProduct
+  onEdit:   () => void
+  onDelete: () => void
 }
 
-function ProductRow({ product, expanded, onToggle, onProductSave, onVariantSave }: ProductRowProps) {
-  const [editName,   setEditName]   = useState(product.name)
-  const [editPrice,  setEditPrice]  = useState(product.base_price.toString())
-  const [editActive, setEditActive] = useState(product.is_active)
-  const [saving,     setSaving]     = useState(false)
-  const [saved,      setSaved]      = useState(false)
-
-  const dirty =
-    editName !== product.name ||
-    parseFloat(editPrice) !== product.base_price ||
-    editActive !== product.is_active
-
-  const save = async () => {
-    setSaving(true)
-    const ok = await onProductSave(product.id, editName, parseFloat(editPrice) || 0, editActive)
-    setSaving(false)
-    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
-  }
+function ProductRow({ product, onEdit, onDelete }: ProductRowProps) {
+  // Thumbnail: first variant image, or first variant colour swatch
+  const thumbUrl  = product.variants.find(v => v.image_url)?.image_url ?? null
+  const thumbHex  = product.variants[0]?.color_hex ?? '#ECE3D9'
+  const totalStock = product.variants.reduce((s, v) => s + v.stock_quantity, 0)
+  const isActive   = product.is_active && totalStock > 0
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      {/* Header row */}
-      <div className="flex items-center gap-4 px-5 py-4">
-        <button
-          onClick={onToggle}
-          className="text-[#8B7568] text-lg leading-none select-none"
-        >
-          {expanded ? '▾' : '▸'}
-        </button>
-
-        {/* Name */}
-        <input
-          className="flex-1 text-sm font-medium text-[#4A3F38] bg-transparent border-b border-transparent
-                     focus:border-[#8B7568] focus:outline-none py-0.5 transition-colors"
-          value={editName}
-          onChange={e => setEditName(e.target.value)}
-        />
-
-        {/* Type badge */}
+    <tr className="hover:bg-[#FAF7F4] transition-colors">
+      <td className="px-5 py-3">
+        {thumbUrl ? (
+          <img
+            src={thumbUrl}
+            alt={product.name}
+            className="w-10 h-10 object-cover rounded-lg border border-[#F4EEE8]"
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-lg border border-[#F4EEE8]"
+            style={{ background: thumbHex }}
+          />
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <span className="font-medium text-[#4A3F38]">{product.name}</span>
+        <span className="block text-[11px] text-[#b0a89f] font-mono">{product.slug}</span>
+      </td>
+      <td className="px-4 py-3 text-[#8B7568]">
+        {STYLE_LABELS[product.style] ?? product.style}
+      </td>
+      <td className="px-4 py-3">
         <span className="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#ECE3D9] text-[#8B7568]">
           {product.type}
         </span>
-
-        {/* Base price */}
-        <label className="flex items-center gap-1 text-sm text-[#8B7568]">
-          EGP
-          <input
-            type="number"
-            className="w-20 text-right text-[#4A3F38] bg-transparent border-b border-transparent
-                       focus:border-[#8B7568] focus:outline-none py-0.5 transition-colors"
-            value={editPrice}
-            onChange={e => setEditPrice(e.target.value)}
-          />
-        </label>
-
-        {/* Active toggle */}
-        <label className="flex items-center gap-1.5 text-xs text-[#8B7568] cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={editActive}
-            onChange={e => setEditActive(e.target.checked)}
-            className="accent-[#8B7568]"
-          />
-          Active
-        </label>
-
-        {/* Save button */}
-        <div className="flex items-center gap-2 w-20 justify-end">
-          {saved ? (
-            <span className="text-xs text-emerald-600">✓ Saved</span>
-          ) : (
-            <button
-              onClick={save}
-              disabled={!dirty || saving}
-              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white
-                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
-            >
-              {saving ? '…' : 'Save'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Variants sub-table */}
-      {expanded && (
-        <div className="border-t border-[#F4EEE8] px-5 py-3">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-[#8B7568]">
-                <th className="text-left py-1.5 pr-3 font-medium">Color</th>
-                <th className="text-left py-1.5 pr-3 font-medium">Size</th>
-                <th className="text-left py-1.5 pr-3 font-medium">SKU</th>
-                <th className="text-right py-1.5 pr-3 font-medium">Price Override</th>
-                <th className="text-right py-1.5 font-medium">Stock</th>
-                <th className="w-16" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F4EEE8]">
-              {product.variants.map(v => (
-                <VariantRow key={v.id} variant={v} onSave={onVariantSave} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── VariantRow ─────────────────────────────────────────────────────────────────
-
-interface VariantRowProps {
-  variant:  AdminVariant
-  onSave:   (variantId: string, stock: number, priceOverride: number | null, imageUrl: string | null) => Promise<boolean>
-}
-
-function VariantRow({ variant, onSave }: VariantRowProps) {
-  const [stock,         setStock]         = useState(variant.stock_quantity.toString())
-  const [priceOverride, setPriceOverride] = useState(
-    variant.price_override != null ? variant.price_override.toString() : ''
-  )
-  const [imageUrl, setImageUrl] = useState(variant.image_url ?? '')
-  const [saving,   setSaving]   = useState(false)
-  const [saved,    setSaved]    = useState(false)
-
-  const dirty =
-    parseInt(stock, 10) !== variant.stock_quantity ||
-    (priceOverride === '' ? null : parseFloat(priceOverride)) !== variant.price_override ||
-    (imageUrl || null) !== variant.image_url
-
-  const save = async () => {
-    setSaving(true)
-    const ok = await onSave(
-      variant.id,
-      parseInt(stock, 10) || 0,
-      priceOverride !== '' ? parseFloat(priceOverride) : null,
-      imageUrl.trim() || null,
-    )
-    setSaving(false)
-    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
-  }
-
-  return (
-    <tr>
-      <td className="py-2 pr-3">
-        <div className="flex items-center gap-1.5">
-          <span
-            className="inline-block w-3.5 h-3.5 rounded-full border border-[#d8cfc5]"
-            style={{ background: variant.color_hex }}
-          />
-          <span className="text-[#4A3F38]">{variant.color_name}</span>
-        </div>
       </td>
-      <td className="py-2 pr-3 text-[#4A3F38]">{variant.size}</td>
-      <td className="py-2 pr-3 text-[#8B7568] font-mono">{variant.sku}</td>
-      <td className="py-2 pr-3 text-right">
-        <input
-          type="number"
-          className="w-20 text-right text-[#4A3F38] bg-transparent border-b border-transparent
-                     focus:border-[#8B7568] focus:outline-none transition-colors"
-          placeholder="—"
-          value={priceOverride}
-          onChange={e => setPriceOverride(e.target.value)}
-        />
+      <td className="px-4 py-3 text-right text-[#4A3F38]">
+        EGP {product.base_price.toFixed(0)}
       </td>
-      <td className="py-2 text-right">
-        <input
-          type="number"
-          className="w-14 text-right text-[#4A3F38] bg-transparent border-b border-transparent
-                     focus:border-[#8B7568] focus:outline-none transition-colors"
-          value={stock}
-          onChange={e => setStock(e.target.value)}
-        />
+      <td className="px-4 py-3 text-right text-[#4A3F38]">{totalStock}</td>
+      <td className="px-4 py-3 text-center">
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            isActive
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-[#F4EEE8] text-[#b0a89f]'
+          }`}
+        >
+          {isActive ? 'Active' : product.is_active ? 'Out of stock' : 'Inactive'}
+        </span>
       </td>
-      <td className="py-2 pr-3">
-        <input
-          type="url"
-          className="w-40 text-xs text-[#4A3F38] bg-transparent border-b border-transparent
-                     focus:border-[#8B7568] focus:outline-none transition-colors placeholder:text-[#c4b9b2]"
-          placeholder="https://…"
-          value={imageUrl}
-          onChange={e => setImageUrl(e.target.value)}
-        />
-      </td>
-      <td className="py-2 pl-3 text-xs text-right">
-        {saved ? (
-          <span className="text-emerald-600">✓</span>
-        ) : (
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2 justify-end">
           <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="px-2.5 py-0.5 rounded-md bg-[#8B7568] text-white text-[11px]
-                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            onClick={onEdit}
+            className="text-xs px-2.5 py-1 rounded-md border border-[#d8cfc5] text-[#4A3F38]
+                       hover:bg-[#ECE3D9] transition-colors"
           >
-            {saving ? '…' : 'Save'}
+            Edit
           </button>
-        )}
+          <button
+            onClick={onDelete}
+            className="text-xs px-2.5 py-1 rounded-md border border-red-200 text-red-500
+                       hover:bg-red-50 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
       </td>
     </tr>
   )

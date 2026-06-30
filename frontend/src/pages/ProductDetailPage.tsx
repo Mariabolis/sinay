@@ -237,6 +237,7 @@ function RelatedCard({ product }: { product: Product }) {
   const colorHex   = firstColor?.color_hex ?? '#EBCFD2'
   const colorName  = firstColor?.color_name ?? ''
   const price      = firstColor?.price ?? product.base_price
+  const imageUrl   = product.variants.find(v => v.image_url)?.image_url ?? null
 
   return (
     <Link
@@ -244,7 +245,11 @@ function RelatedCard({ product }: { product: Product }) {
       className="group block bg-white rounded-2xl overflow-hidden shadow-[0_4px_18px_rgba(139,117,104,0.10)] hover:shadow-[0_8px_28px_rgba(139,117,104,0.17)] transition-shadow duration-300"
     >
       <div className="aspect-[3/4] flex items-center justify-center bg-[#F9F5F0] overflow-hidden">
-        <GarmentPlaceholder type={product.type} style={product.style} colorHex={colorHex} />
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <GarmentPlaceholder type={product.type} style={product.style} colorHex={colorHex} />
+        )}
       </div>
       <div className="p-4">
         <h4 className="font-body font-semibold text-[13px] text-ink leading-snug">{product.name}</h4>
@@ -350,15 +355,24 @@ export default function ProductDetailPage() {
 
   const price = activeVariant?.price ?? product?.base_price ?? 0
 
-  // Gallery images: real images filtered by variant_id or product-level
-  // Falls back to placeholder thumbnails when no images exist.
-  const galleryImages = useMemo(() => {
+  // Gallery: variant image_url values for the active colour take priority;
+  // fall back to the product_images table, then to SVG placeholders.
+  const galleryImages = useMemo((): string[] => {
     if (!product) return []
-    const real = product.images.filter(img =>
-      img.variant_id === null || img.variant_id === activeVariant?.id,
-    )
-    return real
-  }, [product, activeVariant])
+
+    // 1. image_url stored on each variant (deduplicated — all sizes share the same photo)
+    const variantUrls = [...new Set(
+      product.variants
+        .filter(v => v.color_hex === activeHex && v.image_url)
+        .map(v => v.image_url as string),
+    )]
+    if (variantUrls.length > 0) return variantUrls
+
+    // 2. product_images table rows
+    return product.images
+      .filter(img => img.variant_id === null || img.variant_id === activeVariant?.id)
+      .map(img => img.url)
+  }, [product, activeHex, activeVariant])
 
   const hasRealImages = galleryImages.length > 0
 
@@ -428,10 +442,10 @@ export default function ProductDetailPage() {
             <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-[#F9F5F0] relative">
               {hasRealImages ? (
                 <img
-                  src={galleryImages[mainImgIdx]?.url}
+                  key={galleryImages[mainImgIdx]}
+                  src={galleryImages[mainImgIdx]}
                   alt={product.name}
                   className="w-full h-full object-cover transition-opacity duration-300"
-                  key={galleryImages[mainImgIdx]?.id}
                 />
               ) : (
                 <GarmentPlaceholder type={product.type} style={product.style} colorHex={activeHex} label="Front view" />
@@ -441,15 +455,15 @@ export default function ProductDetailPage() {
             {/* Thumbnails */}
             <div className="grid grid-cols-4 gap-2">
               {hasRealImages
-                ? galleryImages.slice(0, 4).map((img, i) => (
+                ? galleryImages.slice(0, 4).map((url, i) => (
                     <button
-                      key={img.id}
+                      key={url}
                       onClick={() => setMainImgIdx(i)}
                       className={`aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mocha/50 ${
                         mainImgIdx === i ? 'border-mocha' : 'border-transparent hover:border-mocha/30'
                       }`}
                     >
-                      <img src={img.url} alt={`${product.name} view ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={url} alt={`${product.name} view ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))
                 : ANGLE_LABELS.map((label, i) => (

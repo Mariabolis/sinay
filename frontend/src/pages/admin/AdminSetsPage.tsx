@@ -35,8 +35,8 @@ export default function AdminSetsPage() {
   const [formErr,   setFormErr]   = useState('')
 
   useEffect(() => {
-    Promise.all([adminApi.listSets(), adminApi.listProducts()])
-      .then(([s, p]) => { setSets(s); setProducts(p) })
+    Promise.all([adminApi.listSets(), adminApi.listProducts({ per_page: 100 })])
+      .then(([s, p]) => { setSets(s); setProducts(p.products ?? []) })
       .catch(() => setError('Failed to load data'))
   }, [])
 

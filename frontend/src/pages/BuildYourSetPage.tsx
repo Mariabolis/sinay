@@ -76,12 +76,23 @@ function PickerCard({
         </span>
       )}
 
-      {/* garment preview */}
-      <div className="aspect-square flex items-center justify-center bg-[#F9F5F0] rounded-xl mb-4 overflow-hidden">
-        <svg viewBox={viewBox} className="w-3/5" aria-hidden="true">
-          <path fill={activeHex} stroke="#8B7568" strokeWidth="2" d={svgPath} />
-        </svg>
-      </div>
+      {/* garment preview — real image if uploaded, SVG silhouette otherwise */}
+      {(() => {
+        const img = product.variants.find(v => v.color_hex === activeHex && v.image_url)?.image_url
+          ?? product.variants.find(v => v.image_url)?.image_url
+          ?? null
+        return (
+          <div className="aspect-square bg-[#F9F5F0] rounded-xl mb-4 overflow-hidden flex items-center justify-center">
+            {img ? (
+              <img src={img} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+              <svg viewBox={viewBox} className="w-3/5" aria-hidden="true">
+                <path fill={activeHex} stroke="#8B7568" strokeWidth="2" d={svgPath} />
+              </svg>
+            )}
+          </div>
+        )
+      })()}
 
       {/* name + price */}
       <h3 className="font-body font-semibold text-[14px] text-ink leading-snug">{product.name}</h3>

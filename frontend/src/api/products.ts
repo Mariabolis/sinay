@@ -10,6 +10,7 @@ export interface ProductVariant {
   sku: string
   stock_quantity: number
   price: number
+  image_url: string | null
 }
 
 export interface ProductImage {

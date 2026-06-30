@@ -56,6 +56,12 @@ function ProductCard({ product }: { product: Product }) {
     [product.variants, activeHex],
   )
 
+  // Sizes that exist AND have stock > 0
+  const inStockForColor = useMemo(
+    () => product.variants.filter(v => v.color_hex === activeHex && v.stock_quantity > 0).map(v => v.size),
+    [product.variants, activeHex],
+  )
+
   const activeVariant = activeSize
     ? product.variants.find(v => v.color_hex === activeHex && v.size === activeSize) ?? null
     : null
@@ -75,14 +81,27 @@ function ProductCard({ product }: { product: Product }) {
     }
   }
 
+  // Pick the first image_url for the active colour (any size works)
+  const activeImage = product.variants.find(
+    v => v.color_hex === activeHex && v.image_url,
+  )?.image_url ?? null
+
   return (
     <div className="bg-white rounded-[18px] p-[18px] text-center transition duration-150 hover:-translate-y-1 flex flex-col">
-      {/* color swatch preview — clicking navigates to product detail */}
+      {/* product preview — image if uploaded, colour swatch otherwise */}
       <Link to={`/product/${product.slug}`} className="block group" tabIndex={-1} aria-hidden>
-        <div
-          className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
-          style={{ background: activeHex }}
-        />
+        {activeImage ? (
+          <img
+            src={activeImage}
+            alt={product.name}
+            className="h-[120px] w-full object-cover rounded-xl mb-3.5 transition-opacity duration-200 group-hover:opacity-90"
+          />
+        ) : (
+          <div
+            className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
+            style={{ background: activeHex }}
+          />
+        )}
       </Link>
 
       <Link to={`/product/${product.slug}`} className="hover:underline underline-offset-2">
@@ -114,18 +133,23 @@ function ProductCard({ product }: { product: Product }) {
       {/* size pills */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap" role="group" aria-label="size">
         {SIZES.map(sz => {
-          const available = sizesForColor.includes(sz)
-          const selected  = activeSize === sz
+          const exists   = sizesForColor.includes(sz)
+          const inStock  = inStockForColor.includes(sz)
+          const selected = activeSize === sz
           return (
             <button
               key={sz}
-              onClick={() => setActiveSize(selected ? null : sz)}
-              disabled={!available}
+              onClick={() => inStock && setActiveSize(selected ? null : sz)}
+              disabled={!exists || !inStock}
               aria-pressed={selected}
-              className={`font-body text-[11px] font-semibold rounded-full px-[10px] py-1 border-[1.4px] transition-colors duration-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[2px] disabled:opacity-30 disabled:cursor-not-allowed ${
-                selected
-                  ? 'bg-mocha text-cream border-mocha'
-                  : 'bg-transparent text-mocha border-mocha hover:bg-mocha/10'
+              className={`font-body text-[11px] font-semibold rounded-full px-[10px] py-1 border-[1.4px] transition-colors duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[2px] ${
+                !exists
+                  ? 'opacity-20 cursor-not-allowed border-mocha text-mocha'
+                  : !inStock
+                  ? 'line-through opacity-30 cursor-not-allowed border-mocha/40 text-mocha/40'
+                  : selected
+                  ? 'bg-mocha text-cream border-mocha cursor-pointer'
+                  : 'bg-transparent text-mocha border-mocha hover:bg-mocha/10 cursor-pointer'
               }`}
             >
               {sz}
@@ -136,7 +160,7 @@ function ProductCard({ product }: { product: Product }) {
 
       <button
         onClick={handleAdd}
-        disabled={!activeVariant || adding}
+        disabled={!activeVariant || adding || (activeVariant?.stock_quantity ?? 0) === 0}
         className="btn-pill-sm disabled:opacity-40 disabled:cursor-not-allowed mt-auto"
       >
         {adding ? 'Adding…' : added ? 'Added!' : activeSize ? 'Add to Bag' : 'Select size'}

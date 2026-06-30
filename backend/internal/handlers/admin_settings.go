@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"sinay/backend/internal/models"
 )
@@ -39,12 +40,7 @@ func (h *AdminSettingHandler) Update(c *gin.Context) {
 		return
 	}
 
-	result := h.db.Model(&models.Setting{}).
-		Where("key = ?", key).
-		Update("value", req.Value)
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "setting not found"})
-		return
-	}
-	c.JSON(http.StatusOK, models.Setting{Key: key, Value: req.Value})
+	setting := models.Setting{Key: key, Value: req.Value}
+	h.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&setting)
+	c.JSON(http.StatusOK, setting)
 }

@@ -43,6 +43,8 @@ export default function ProductPreviewGrid() {
             const colorName = firstVariant?.color_name ?? ''
             const price     = firstVariant?.price      ?? product.base_price
 
+            const imageUrl = product.variants.find(v => v.image_url)?.image_url ?? null
+
             return (
               <Link
                 key={product.id}
@@ -51,10 +53,18 @@ export default function ProductPreviewGrid() {
                            transition-transform duration-300 hover:-translate-y-1
                            focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[2px]"
               >
-                <div
-                  className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200"
-                  style={{ background: colorHex }}
-                />
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={product.name}
+                    className="h-[120px] w-full object-cover rounded-xl mb-3.5"
+                  />
+                ) : (
+                  <div
+                    className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200"
+                    style={{ background: colorHex }}
+                  />
+                )}
                 <h4 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h4>
                 {colorName && (
                   <p className="text-[11.5px] text-mocha/60 mb-1 flex items-center justify-center gap-1.5">

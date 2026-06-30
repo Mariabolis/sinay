@@ -29,13 +29,14 @@ type imageResp struct {
 }
 
 type variantResp struct {
-	ID            string  `json:"id"`
-	ColorName     string  `json:"color_name"`
-	ColorHex      string  `json:"color_hex"`
-	Size          string  `json:"size"`
-	SKU           string  `json:"sku"`
-	StockQuantity int     `json:"stock_quantity"`
-	Price         float64 `json:"price"`
+	ID            string   `json:"id"`
+	ColorName     string   `json:"color_name"`
+	ColorHex      string   `json:"color_hex"`
+	Size          string   `json:"size"`
+	SKU           string   `json:"sku"`
+	StockQuantity int      `json:"stock_quantity"`
+	Price         float64  `json:"price"`
+	ImageURL      *string  `json:"image_url"`
 }
 
 type productResp struct {
@@ -93,6 +94,7 @@ func toProductResp(p models.Product) productResp {
 			SKU:           v.SKU,
 			StockQuantity: v.StockQuantity,
 			Price:         price,
+			ImageURL:      v.ImageURL,
 		})
 	}
 	for _, img := range p.Images {
