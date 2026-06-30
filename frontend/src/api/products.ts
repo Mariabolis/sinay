@@ -12,6 +12,13 @@ export interface ProductVariant {
   price: number
 }
 
+export interface ProductImage {
+  id: string
+  variant_id: string | null
+  url: string
+  position: number
+}
+
 export interface Product {
   id: string
   slug: string
@@ -20,8 +27,10 @@ export interface Product {
   style: string
   description: string
   fabric: string
+  care_notes: string
   base_price: number
   variants: ProductVariant[]
+  images: ProductImage[]
 }
 
 export interface ProductsResponse {

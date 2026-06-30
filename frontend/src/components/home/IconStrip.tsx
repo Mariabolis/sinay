@@ -1,3 +1,5 @@
+import { useReveal } from '../../lib/useReveal'
+
 const ICONS = [
   {
     label: 'Lightweight & breathable',
@@ -27,8 +29,14 @@ const ICONS = [
 ]
 
 export default function IconStrip() {
+  const [ref, visible] = useReveal<HTMLElement>()
+
   return (
-    <section className="grid grid-cols-3 md:grid-cols-5 gap-[18px] px-6 py-9 bg-cream-deep">
+    <section
+      ref={ref}
+      className={`stagger-grid grid grid-cols-3 md:grid-cols-5 gap-[18px] px-6 py-9 bg-cream-deep
+                  ${visible ? 'is-visible' : ''}`}
+    >
       {ICONS.map(({ paths, label }) => (
         <div key={label} className="text-center">
           <svg

@@ -21,6 +21,13 @@ func NewProductHandler(db *gorm.DB) *ProductHandler {
 
 // ── response types ────────────────────────────────────────────────────────────
 
+type imageResp struct {
+	ID        string  `json:"id"`
+	VariantID *string `json:"variant_id"`
+	URL       string  `json:"url"`
+	Position  int     `json:"position"`
+}
+
 type variantResp struct {
 	ID            string  `json:"id"`
 	ColorName     string  `json:"color_name"`
@@ -39,8 +46,10 @@ type productResp struct {
 	Style       string        `json:"style"`
 	Description string        `json:"description"`
 	Fabric      string        `json:"fabric"`
+	CareNotes   string        `json:"care_notes"`
 	BasePrice   float64       `json:"base_price"`
 	Variants    []variantResp `json:"variants"`
+	Images      []imageResp   `json:"images"`
 }
 
 type productsListResp struct {
@@ -66,8 +75,10 @@ func toProductResp(p models.Product) productResp {
 		Style:       p.Style,
 		Description: derefStr(p.Description),
 		Fabric:      derefStr(p.Fabric),
+		CareNotes:   derefStr(p.CareNotes),
 		BasePrice:   p.BasePrice,
 		Variants:    make([]variantResp, 0, len(p.Variants)),
+		Images:      make([]imageResp, 0, len(p.Images)),
 	}
 	for _, v := range p.Variants {
 		price := p.BasePrice
@@ -83,6 +94,18 @@ func toProductResp(p models.Product) productResp {
 			StockQuantity: v.StockQuantity,
 			Price:         price,
 		})
+	}
+	for _, img := range p.Images {
+		ir := imageResp{
+			ID:       img.ID.String(),
+			URL:      img.URL,
+			Position: img.Position,
+		}
+		if img.VariantID != nil {
+			s := img.VariantID.String()
+			ir.VariantID = &s
+		}
+		pr.Images = append(pr.Images, ir)
 	}
 	return pr
 }
@@ -188,6 +211,9 @@ func (h *ProductHandler) Get(c *gin.Context) {
 		Where("slug = ? AND is_active = ?", slug, true).
 		Preload("Variants", func(db *gorm.DB) *gorm.DB {
 			return db.Order("color_name ASC, size ASC")
+		}).
+		Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("position ASC")
 		}).
 		First(&product).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})

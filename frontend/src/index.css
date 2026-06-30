@@ -42,3 +42,99 @@
            px-3 py-2 outline-none focus:border-[#8B7568] transition-colors;
   }
 }
+
+/* ── Motion easing token ─────────────────────────────────────────────────────── */
+:root { --ease-smooth: cubic-bezier(.4,0,.2,1); }
+
+/* ── Smooth scrolling ────────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+
+/* ── Hero entrance (staggered fade+rise) ─────────────────────────────────────── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-el {
+  animation: heroFadeUp 450ms var(--ease-smooth) both;
+}
+.hero-el:nth-child(1) { animation-delay: 0ms;   }
+.hero-el:nth-child(2) { animation-delay: 80ms;  }
+.hero-el:nth-child(3) { animation-delay: 180ms; }
+.hero-el:nth-child(4) { animation-delay: 280ms; }
+.hero-el:nth-child(5) { animation-delay: 380ms; }
+
+/* ── Scroll-reveal ───────────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity  450ms var(--ease-smooth),
+    transform 450ms var(--ease-smooth);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Grid stagger — applied to a parent wrapper */
+.stagger-grid > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity  450ms var(--ease-smooth),
+    transform 450ms var(--ease-smooth);
+}
+.stagger-grid.is-visible > *:nth-child(1) { opacity:1; transform:translateY(0); transition-delay:0ms;   }
+.stagger-grid.is-visible > *:nth-child(2) { opacity:1; transform:translateY(0); transition-delay:80ms;  }
+.stagger-grid.is-visible > *:nth-child(3) { opacity:1; transform:translateY(0); transition-delay:160ms; }
+.stagger-grid.is-visible > *:nth-child(4) { opacity:1; transform:translateY(0); transition-delay:240ms; }
+.stagger-grid.is-visible > *:nth-child(5) { opacity:1; transform:translateY(0); transition-delay:320ms; }
+
+/* ── SVG garment breathing loop + pulse feedback ─────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50%       { transform: scale(1.015) rotate(0.4deg); }
+}
+@keyframes garmPulse {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+/* On first render just breathe; key-remount re-runs pulse then breathe */
+.garment-anim {
+  transform-origin: center bottom;
+  animation:
+    garmPulse 380ms var(--ease-smooth) 1,
+    breathe   4s    ease-in-out 380ms infinite;
+}
+
+/* ── Wave divider ambient opacity breathe ────────────────────────────────────── */
+@keyframes waveBreath {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.wave-breathe { animation: waveBreath 6s ease-in-out infinite; }
+
+/* ── Footer marquee ──────────────────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 28s linear infinite;
+}
+
+/* ── prefers-reduced-motion — disable everything above ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1     !important;
+    transition-duration:      0.01ms !important;
+  }
+  .reveal,
+  .stagger-grid > * { opacity: 1 !important; transform: none !important; }
+}

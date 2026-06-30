@@ -1,15 +1,27 @@
-const PRODUCTS = [
-  { color: '#EBCFD2', name: 'Sage Trim Top',         price: 'from EGP 450' },
-  { color: '#B9C0AE', name: 'Wide-leg Bottom',        price: 'from EGP 420' },
-  { color: '#C9D8E8', name: 'Cloud Tee Top',          price: 'from EGP 450' },
-  { color: '#8B7568', name: 'Mocha Lounge Bottom',    price: 'from EGP 420' },
-]
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { productsApi, type Product } from '../../api/products'
+import { useReveal } from '../../lib/useReveal'
 
 export default function ProductPreviewGrid() {
+  const [products, setProducts] = useState<Product[]>([])
+
+  const [headRef, headVisible] = useReveal<HTMLDivElement>()
+  const [gridRef, gridVisible] = useReveal<HTMLDivElement>()
+
+  useEffect(() => {
+    productsApi.list({ per_page: 4 })
+      .then(res => setProducts(res.products))
+      .catch(() => {})
+  }, [])
+
   return (
     <section className="bg-cream-deep px-6 pt-[60px] pb-20">
       <div className="max-w-[1080px] mx-auto">
-        <div className="text-center mb-9">
+        <div
+          ref={headRef}
+          className={`text-center mb-9 reveal ${headVisible ? 'is-visible' : ''}`}
+        >
           <p className="text-xs tracking-[0.3em] uppercase text-mocha">
             Sold separately
           </p>
@@ -21,20 +33,45 @@ export default function ProductPreviewGrid() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {PRODUCTS.map(({ color, name, price }) => (
-            <div
-              key={name}
-              className="bg-white rounded-[18px] p-[18px] text-center transition duration-150 hover:-translate-y-1 cursor-pointer"
-            >
-              <div
-                className="h-[120px] rounded-xl mb-3.5"
-                style={{ background: color }}
-              />
-              <h4 className="font-body font-semibold text-[14px] text-ink mb-1">{name}</h4>
-              <p className="text-[13px] text-mocha">{price}</p>
-            </div>
-          ))}
+        <div
+          ref={gridRef}
+          className={`stagger-grid grid grid-cols-2 md:grid-cols-4 gap-5 ${gridVisible ? 'is-visible' : ''}`}
+        >
+          {products.map(product => {
+            const firstVariant = product.variants[0]
+            const colorHex  = firstVariant?.color_hex  ?? '#EBCFD2'
+            const colorName = firstVariant?.color_name ?? ''
+            const price     = firstVariant?.price      ?? product.base_price
+
+            return (
+              <Link
+                key={product.id}
+                to={`/product/${product.slug}`}
+                className="block bg-white rounded-[18px] p-[18px] text-center
+                           transition-transform duration-300 hover:-translate-y-1
+                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[2px]"
+              >
+                <div
+                  className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200"
+                  style={{ background: colorHex }}
+                />
+                <h4 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h4>
+                {colorName && (
+                  <p className="text-[11.5px] text-mocha/60 mb-1 flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full inline-block border border-mocha/20" style={{ background: colorHex }} />
+                    {colorName}
+                  </p>
+                )}
+                <p className="text-[13px] text-mocha">EGP {price.toFixed(0)}</p>
+              </Link>
+            )
+          })}
+        </div>
+
+        <div className="text-center mt-9">
+          <Link to="/shop" className="btn-pill-ghost">
+            View all pieces
+          </Link>
         </div>
       </div>
     </section>

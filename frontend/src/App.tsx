@@ -9,6 +9,8 @@ import RegisterPage from './pages/RegisterPage'
 import CheckoutPage from './pages/CheckoutPage'
 import PaymentResultPage from './pages/PaymentResultPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
+import ProductDetailPage from './pages/ProductDetailPage'
+import BuildYourSetPage from './pages/BuildYourSetPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminOverviewPage from './pages/admin/AdminOverviewPage'
 import AdminProductsPage from './pages/admin/AdminProductsPage'
@@ -52,6 +54,8 @@ export default function App() {
         <Route path="/checkout"                  element={<CheckoutPage />} />
         <Route path="/payment/result"            element={<PaymentResultPage />} />
         <Route path="/order/:id/confirmation"    element={<OrderConfirmationPage />} />
+        <Route path="/product/:slug"             element={<ProductDetailPage />} />
+        <Route path="/build-your-set"            element={<BuildYourSetPage />} />
       </Route>
     </Routes>
   )

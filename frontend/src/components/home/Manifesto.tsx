@@ -1,6 +1,13 @@
+import { useReveal } from '../../lib/useReveal'
+
 export default function Manifesto() {
+  const [ref, visible] = useReveal<HTMLElement>()
+
   return (
-    <section className="text-center px-6 pt-2 pb-14 max-w-[640px] mx-auto">
+    <section
+      ref={ref}
+      className={`text-center px-6 pt-2 pb-14 max-w-[640px] mx-auto reveal ${visible ? 'is-visible' : ''}`}
+    >
       <p
         className="font-logo text-ink leading-[1.45] mb-[30px]"
         style={{ fontSize: 'clamp(19px, 2.6vw, 24px)' }}

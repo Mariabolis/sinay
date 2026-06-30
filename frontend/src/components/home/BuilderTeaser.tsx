@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { productsApi, type Product } from '../../api/products'
 import { cartApi } from '../../api/cart'
 import { useCartStore } from '../../store/cartStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../../lib/garmentPaths'
+import { useReveal } from '../../lib/useReveal'
 
 // ── types matching the database style values ───────────────────────────────────
 
@@ -46,6 +48,9 @@ export default function BuilderTeaser() {
   const [added,   setAdded]   = useState(false)
 
   const setCart = useCartStore(s => s.setCart)
+
+  const [sectionRef, sectionVisible] = useReveal<HTMLElement>(0.08)
+  const [barRef,     barVisible]     = useReveal<HTMLDivElement>(0.1)
 
   useEffect(() => {
     Promise.all([
@@ -91,10 +96,10 @@ export default function BuilderTeaser() {
   }
 
   return (
-    <section className="py-[72px] px-6" id="builder">
+    <section ref={sectionRef} className="py-[72px] px-6" id="builder">
       <div className="max-w-[1080px] mx-auto">
 
-        <div className="text-center mb-11">
+        <div className={`text-center mb-11 reveal ${sectionVisible ? 'is-visible' : ''}`}>
           <p className="text-xs tracking-[0.3em] uppercase text-mocha">
             Prefer to mix it yourself?
           </p>
@@ -106,7 +111,7 @@ export default function BuilderTeaser() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
+        <div className={`stagger-grid grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center ${sectionVisible ? 'is-visible' : ''}`}>
           <PiecePanel
             label="01 — Choose a top"
             svgPath={TOP_PATHS[topStyle] ?? ''}
@@ -118,6 +123,7 @@ export default function BuilderTeaser() {
             onColorChange={setTopColor}
             onSizeChange={setTopSize}
             garmentLabel="top"
+            productSlug={topProduct?.slug}
           />
           <PiecePanel
             label="02 — Choose a bottom"
@@ -130,11 +136,15 @@ export default function BuilderTeaser() {
             onColorChange={setBottomColor}
             onSizeChange={setBottomSize}
             garmentLabel="bottom"
+            productSlug={bottomProduct?.slug}
           />
         </div>
 
         {/* set summary bar */}
-        <div className="mt-12 flex items-center justify-between gap-4 flex-wrap bg-white rounded-[18px] px-[26px] py-[18px] shadow-[0_8px_24px_rgba(139,117,104,0.12)]">
+        <div
+          ref={barRef}
+          className={`mt-12 flex items-center justify-between gap-4 flex-wrap bg-white rounded-[18px] px-[26px] py-[18px] shadow-[0_8px_24px_rgba(139,117,104,0.12)] reveal ${barVisible ? 'is-visible' : ''}`}
+        >
           <div>
             <p className="text-xs tracking-[0.1em] uppercase text-mocha">Your set</p>
             <p className="font-logo text-2xl text-ink">EGP {totalPrice.toFixed(0)}</p>
@@ -169,6 +179,7 @@ interface PiecePanelProps {
   onColorChange: (hex: string) => void
   onSizeChange: (s: Size) => void
   garmentLabel: string
+  productSlug?: string
 }
 
 function PiecePanel({
@@ -182,22 +193,52 @@ function PiecePanel({
   onColorChange,
   onSizeChange,
   garmentLabel,
+  productSlug,
 }: PiecePanelProps) {
+  // Each time color or svgPath changes, remount the animated container
+  // so the CSS pulse+breathe sequence restarts from the beginning.
+  const [animKey, setAnimKey] = useState(0)
+  const prevColor = useRef(color)
+  const prevPath  = useRef(svgPath)
+
+  useEffect(() => {
+    if (color !== prevColor.current || svgPath !== prevPath.current) {
+      prevColor.current = color
+      prevPath.current  = svgPath
+      setAnimKey(k => k + 1)
+    }
+  }, [color, svgPath])
+
   return (
     <div className="text-center">
       <h3 className="font-body font-semibold text-[15px] tracking-[0.08em] uppercase text-mocha mb-[18px]">
         {label}
       </h3>
 
-      <div className="bg-white rounded-3xl p-[22px] mb-5 shadow-[0_10px_30px_rgba(139,117,104,0.10)]">
-        <svg
-          viewBox="0 0 200 180"
-          className="w-full block mx-auto"
-          style={{ maxHeight: 220 }}
-          aria-hidden="true"
-        >
-          <path fill={color} stroke="#8B7568" strokeWidth="2.2" d={svgPath} />
-        </svg>
+      <div className="relative bg-white rounded-3xl p-[22px] mb-5 shadow-[0_10px_30px_rgba(139,117,104,0.10)] group">
+        {/* key remount restarts the garment-anim CSS sequence (pulse → breathe) */}
+        <div key={animKey} className="garment-anim">
+          <svg
+            viewBox="0 0 200 180"
+            className="w-full block mx-auto"
+            style={{ maxHeight: 220 }}
+            aria-hidden="true"
+          >
+            <path fill={color} stroke="#8B7568" strokeWidth="2.2" d={svgPath} />
+          </svg>
+        </div>
+        {productSlug && (
+          <Link
+            to={`/product/${productSlug}`}
+            className="absolute bottom-3 right-3 text-[11px] font-semibold tracking-[0.06em] text-mocha/50 hover:text-mocha transition-colors duration-200 flex items-center gap-1"
+            aria-label={`View ${garmentLabel} details`}
+          >
+            View details
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="w-2.5 h-2.5">
+              <path d="M2 6h8M6 2l4 4-4 4" />
+            </svg>
+          </Link>
+        )}
       </div>
 
       <div className="flex justify-center gap-2 mb-4 flex-wrap" role="group" aria-label={`${garmentLabel} style`}>

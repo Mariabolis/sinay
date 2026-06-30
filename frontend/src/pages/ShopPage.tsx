@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { productsApi, type Product, type ColorOption } from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
@@ -77,13 +77,17 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="bg-white rounded-[18px] p-[18px] text-center transition duration-150 hover:-translate-y-1 flex flex-col">
-      {/* color swatch preview */}
-      <div
-        className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200"
-        style={{ background: activeHex }}
-      />
+      {/* color swatch preview — clicking navigates to product detail */}
+      <Link to={`/product/${product.slug}`} className="block group" tabIndex={-1} aria-hidden>
+        <div
+          className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
+          style={{ background: activeHex }}
+        />
+      </Link>
 
-      <h3 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h3>
+      <Link to={`/product/${product.slug}`} className="hover:underline underline-offset-2">
+        <h3 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h3>
+      </Link>
       <p className="text-[11.5px] text-[#8a7c72] mb-2">
         {STYLE_LABELS[product.style] ?? product.style}
       </p>

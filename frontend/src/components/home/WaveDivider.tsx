@@ -1,12 +1,12 @@
 interface Props {
-  flip?: boolean
-  stroke?: string
+  flip?:    boolean
+  stroke?:  string
   opacity?: number
 }
 
 export default function WaveDivider({
-  flip = false,
-  stroke = '#C98FA0',
+  flip    = false,
+  stroke  = '#C98FA0',
   opacity = 0.5,
 }: Props) {
   const d = flip
@@ -16,7 +16,7 @@ export default function WaveDivider({
     <svg
       viewBox="0 0 400 28"
       preserveAspectRatio="none"
-      className="w-full h-7 block"
+      className="w-full h-7 block wave-breathe"
       aria-hidden="true"
     >
       <path d={d} fill="none" strokeWidth="1.6" stroke={stroke} opacity={opacity} />
