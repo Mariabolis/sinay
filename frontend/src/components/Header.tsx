@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import sinayLogo from '../assets/logo/Sinay-Logo.png'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 
@@ -106,9 +105,15 @@ export default function Header() {
           </button>
         </div>
 
-        {/* ── Center: logo ── */}
-        <Link to="/" className="flex justify-center focus-visible:outline-2 focus-visible:outline-mocha focus-visible:rounded-sm" onClick={closeMenu}>
-          <img src={sinayLogo} alt="SINAY" className="h-[72px] w-auto object-contain" />
+        {/* ── Center: brand name ── */}
+        <Link
+          to="/"
+          className="flex justify-center focus-visible:outline-2 focus-visible:outline-mocha focus-visible:rounded-sm"
+          onClick={closeMenu}
+        >
+          <span className="font-logo text-[22px] tracking-[0.18em] text-ink uppercase select-none">
+            Sinay
+          </span>
         </Link>
 
         {/* ── Right: icon actions ── */}

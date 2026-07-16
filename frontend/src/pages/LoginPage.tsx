@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import sinayLogoBeige from '../assets/logo/Sinay-Logo-B.png'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -39,13 +40,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand header */}
         <div className="text-center mb-10">
-          <span className="text-dusty-pink text-3xl select-none" aria-hidden>
-            ≈
-          </span>
-          <h1 className="font-logo text-5xl tracking-brand text-mocha uppercase mt-1">
-            sinay
-          </h1>
-          <p className="text-mocha/50 text-xs tracking-wide2 uppercase mt-2">
+          <div className="h-24 overflow-hidden flex items-center justify-center mx-auto">
+            <img src={sinayLogoBeige} alt="SINAY" className="h-[280px] w-auto object-contain flex-none" />
+          </div>
+          <p className="text-mocha/45 text-xs tracking-[0.2em] uppercase mt-2">
             welcome back
           </p>
         </div>

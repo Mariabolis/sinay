@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import sinayLogo from '../../assets/logo/Sinay-Logo.png'
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -52,12 +53,17 @@ export default function Hero() {
         Korean-inspired loungewear
       </p>
 
-      <h1
-        className="hero-el relative font-logo leading-none text-mocha tracking-[0.1em]"
-        style={{ fontSize: 'clamp(48px, 9vw, 84px)' }}
+      <div
+        className="hero-el relative overflow-hidden mx-auto"
+        style={{ width: 'min(520px, 82vw)', height: 'clamp(110px, 14vw, 185px)' }}
       >
-        SINAY
-      </h1>
+        <img
+          src={sinayLogo}
+          alt="SINAY"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-auto object-contain"
+          style={{ height: 'clamp(320px, 40vw, 540px)' }}
+        />
+      </div>
 
       <p
         className="hero-el relative font-logo italic text-ink mt-2.5"
