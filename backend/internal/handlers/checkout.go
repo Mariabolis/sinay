@@ -122,31 +122,24 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 	}
 
 	discount := 0.0
+	freeShipping := false
 	if cart.CouponCode != nil && *cart.CouponCode != "" {
 		var coupon models.Coupon
 		if h.db.Where("code = ? AND active = true", *cart.CouponCode).First(&coupon).Error == nil {
-			if coupon.ExpiresAt == nil || coupon.ExpiresAt.After(time.Now()) {
-				switch coupon.Type {
-				case "percent":
-					discount = math.Round(subtotal*coupon.Value/100*100) / 100
-				case "fixed":
-					if coupon.Value > subtotal {
-						discount = subtotal
-					} else {
-						discount = coupon.Value
-					}
-				}
-			}
+			discount, freeShipping = computeCouponDiscount(&coupon, cart.Items, subtotal)
 		}
 	}
 
-	// Look up shipping fee by governorate
-	shippingFee := 75.0 // default if governorate not found
-	gov := derefStr(resolvedAddr.Governorate)
-	if gov != "" {
-		var zone models.ShippingZone
-		if h.db.Where("governorate = ?", gov).First(&zone).Error == nil {
-			shippingFee = zone.Fee
+	// Look up shipping fee by governorate (zeroed when coupon grants free shipping)
+	shippingFee := 0.0
+	if !freeShipping {
+		shippingFee = 75.0
+		gov := derefStr(resolvedAddr.Governorate)
+		if gov != "" {
+			var zone models.ShippingZone
+			if h.db.Where("governorate = ?", gov).First(&zone).Error == nil {
+				shippingFee = zone.Fee
+			}
 		}
 	}
 

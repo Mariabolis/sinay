@@ -7,8 +7,6 @@ import { TOP_PATHS, BOTTOM_PATHS } from '../lib/garmentPaths'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-
 function getPath(type: string, style: string) {
   if (type === 'top') return TOP_PATHS[style] ?? TOP_PATHS['classic_short_sleeve']
   return BOTTOM_PATHS[style] ?? BOTTOM_PATHS['wide_leg']
@@ -23,12 +21,12 @@ function uniqueColorsFor(product: Product) {
   })
 }
 
-function sizesForColor(product: Product, hex: string) {
+function sizesForColor(product: Product, hex: string, sizeOrder: string[]) {
   const inStock = new Set(
     product.variants.filter(v => v.color_hex === hex && v.stock_quantity > 0).map(v => v.size),
   )
   const all = new Set(product.variants.filter(v => v.color_hex === hex).map(v => v.size))
-  return SIZE_ORDER.filter(s => all.has(s)).map(s => ({ size: s, inStock: inStock.has(s) }))
+  return sizeOrder.filter(s => all.has(s)).map(s => ({ size: s, inStock: inStock.has(s) }))
 }
 
 function findVariant(product: Product, hex: string, size: string): ProductVariant | null {
@@ -126,16 +124,17 @@ function ModelCard({
 // ── Detail picker (expanded panel for selected model) ─────────────────────────
 
 function DetailPicker({
-  product, activeHex, activeSize, onColorChange, onSizeChange,
+  product, activeHex, activeSize, sizeOrder, onColorChange, onSizeChange,
 }: {
   product: Product
   activeHex: string
   activeSize: string | null
+  sizeOrder: string[]
   onColorChange: (hex: string) => void
   onSizeChange:  (size: string | null) => void
 }) {
   const colors  = uniqueColorsFor(product)
-  const sizes   = sizesForColor(product, activeHex)
+  const sizes   = sizesForColor(product, activeHex, sizeOrder)
   const svgPath = getPath(product.type, product.style)
   const viewBox = product.type === 'top' ? '30 0 140 175' : '35 5 90 165'
   const img     = productImageFor(product, activeHex)
@@ -275,6 +274,7 @@ export default function BuildYourSetPage() {
 
   const [tops,    setTops]    = useState<Product[]>([])
   const [bottoms, setBottoms] = useState<Product[]>([])
+  const [sizeOrder, setSizeOrder] = useState<string[]>(['S', 'M', 'L', 'XL'])
 
   const [topId,   setTopId]   = useState<string | null>(null)
   const [topHex,  setTopHex]  = useState('')
@@ -306,6 +306,7 @@ export default function BuildYourSetPage() {
       setTops(tRes.products)
       setBottoms(bRes.products)
     }).catch(() => {})
+    productsApi.sizeGuide().then(res => setSizeOrder(res.sizes)).catch(() => {})
   }, [])
 
   // scroll to detail panel after React renders it
@@ -437,6 +438,7 @@ export default function BuildYourSetPage() {
                     product={topProduct}
                     activeHex={topHex}
                     activeSize={topSize}
+                    sizeOrder={sizeOrder}
                     onColorChange={hex => { setTopHex(hex); setTopSize(null) }}
                     onSizeChange={sz => setTopSize(sz)}
                   />
@@ -484,6 +486,7 @@ export default function BuildYourSetPage() {
                     product={botProduct}
                     activeHex={botHex}
                     activeSize={botSize}
+                    sizeOrder={sizeOrder}
                     onColorChange={hex => { setBotHex(hex); setBotSize(null) }}
                     onSizeChange={sz => setBotSize(sz)}
                   />

@@ -1,51 +1,49 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { productsApi, type Product } from '../../api/products'
+import { productsApi, type Product, type ProductStyleOption, type StoreColor } from '../../api/products'
 import { cartApi } from '../../api/cart'
 import { useCartStore } from '../../store/cartStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../../lib/garmentPaths'
 import { useReveal } from '../../lib/useReveal'
 
-// ── types matching the database style values ───────────────────────────────────
-
-type TopStyle    = 'classic_short_sleeve' | 'sleeveless' | 'relaxed_shirt'
-type BottomStyle = 'shorts' | 'bermuda' | 'wide_leg'
-const SIZES = ['S', 'M', 'L', 'XL'] as const
-type Size = (typeof SIZES)[number]
-
-const TOP_STYLES: { key: TopStyle; label: string }[] = [
+const DEFAULT_TOP_STYLES: ProductStyleOption[] = [
   { key: 'classic_short_sleeve', label: 'Short-sleeve'  },
   { key: 'sleeveless',           label: 'Sleeveless'    },
   { key: 'relaxed_shirt',        label: 'Relaxed shirt' },
 ]
 
-const BOTTOM_STYLES: { key: BottomStyle; label: string }[] = [
+const DEFAULT_BOTTOM_STYLES: ProductStyleOption[] = [
   { key: 'shorts',   label: 'Shorts'   },
   { key: 'bermuda',  label: 'Bermuda'  },
   { key: 'wide_leg', label: 'Wide-leg' },
 ]
 
-const SWATCHES = [
-  { hex: '#EBCFD2', label: 'Dusty Pink' },
-  { hex: '#B9C0AE', label: 'Sage'       },
-  { hex: '#C9D8E8', label: 'Sky Blue'   },
-  { hex: '#8B7568', label: 'Mocha'      },
-] as const
+const DEFAULT_SWATCHES: StoreColor[] = [
+  { hex: '#EBCFD2', name: 'Dusty Pink' },
+  { hex: '#B9C0AE', name: 'Sage'       },
+  { hex: '#C9D8E8', name: 'Sky Blue'   },
+  { hex: '#8B7568', name: 'Mocha'      },
+]
 
 // ── main component ─────────────────────────────────────────────────────────────
 
 export default function BuilderTeaser() {
-  const [topStyle,    setTopStyle]    = useState<TopStyle>('classic_short_sleeve')
-  const [bottomStyle, setBottomStyle] = useState<BottomStyle>('wide_leg')
+  const [topStyle,    setTopStyle]    = useState('classic_short_sleeve')
+  const [bottomStyle, setBottomStyle] = useState('wide_leg')
   const [topColor,    setTopColor]    = useState('#EBCFD2')
   const [bottomColor, setBottomColor] = useState('#C9D8E8')
-  const [topSize,     setTopSize]     = useState<Size>('S')
-  const [bottomSize,  setBottomSize]  = useState<Size>('S')
+  const [topSize,     setTopSize]     = useState('S')
+  const [bottomSize,  setBottomSize]  = useState('S')
 
   const [tops,    setTops]    = useState<Product[]>([])
   const [bottoms, setBottoms] = useState<Product[]>([])
   const [adding,  setAdding]  = useState(false)
   const [added,   setAdded]   = useState(false)
+  const [sizes,   setSizes]   = useState<string[]>(['S', 'M', 'L', 'XL'])
+
+  const [topStyles,    setTopStyles]    = useState<ProductStyleOption[]>(DEFAULT_TOP_STYLES)
+  const [bottomStyles, setBottomStyles] = useState<ProductStyleOption[]>(DEFAULT_BOTTOM_STYLES)
+  const [swatches,     setSwatches]     = useState<StoreColor[]>(DEFAULT_SWATCHES)
 
   const setCart = useCartStore(s => s.setCart)
 
@@ -62,6 +60,12 @@ export default function BuilderTeaser() {
         setBottoms(bRes.products)
       })
       .catch(() => {})
+    productsApi.sizeGuide().then(res => setSizes(res.sizes)).catch(() => {})
+    productsApi.storeContent().then(res => {
+      setTopStyles(res.product_styles.top)
+      setBottomStyles(res.product_styles.bottom)
+      setSwatches(res.store_colors)
+    }).catch(() => {})
   }, [])
 
   const topProduct    = tops.find(p => p.style === topStyle)
@@ -117,9 +121,11 @@ export default function BuilderTeaser() {
             svgPath={TOP_PATHS[topStyle] ?? ''}
             color={topColor}
             size={topSize}
-            styles={TOP_STYLES}
+            sizes={sizes}
+            swatches={swatches}
+            styles={topStyles}
             selectedStyle={topStyle}
-            onStyleChange={k => setTopStyle(k as TopStyle)}
+            onStyleChange={setTopStyle}
             onColorChange={setTopColor}
             onSizeChange={setTopSize}
             garmentLabel="top"
@@ -130,9 +136,11 @@ export default function BuilderTeaser() {
             svgPath={BOTTOM_PATHS[bottomStyle] ?? ''}
             color={bottomColor}
             size={bottomSize}
-            styles={BOTTOM_STYLES}
+            sizes={sizes}
+            swatches={swatches}
+            styles={bottomStyles}
             selectedStyle={bottomStyle}
-            onStyleChange={k => setBottomStyle(k as BottomStyle)}
+            onStyleChange={setBottomStyle}
             onColorChange={setBottomColor}
             onSizeChange={setBottomSize}
             garmentLabel="bottom"
@@ -172,12 +180,14 @@ interface PiecePanelProps {
   label: string
   svgPath: string
   color: string
-  size: Size
+  size: string
+  sizes: string[]
+  swatches: StoreColor[]
   styles: { key: string; label: string }[]
   selectedStyle: string
   onStyleChange: (key: string) => void
   onColorChange: (hex: string) => void
-  onSizeChange: (s: Size) => void
+  onSizeChange: (s: string) => void
   garmentLabel: string
   productSlug?: string
 }
@@ -187,6 +197,8 @@ function PiecePanel({
   svgPath,
   color,
   size,
+  sizes,
+  swatches,
   styles,
   selectedStyle,
   onStyleChange,
@@ -259,11 +271,11 @@ function PiecePanel({
       </div>
 
       <div className="flex justify-center gap-3 mb-3.5" role="group" aria-label={`${garmentLabel} colour`}>
-        {SWATCHES.map(s => (
+        {swatches.map(s => (
           <button
             key={s.hex}
             onClick={() => onColorChange(s.hex)}
-            aria-label={`${s.label} ${garmentLabel}`}
+            aria-label={`${s.name} ${garmentLabel}`}
             aria-pressed={color === s.hex}
             style={{ background: s.hex }}
             className={`w-[30px] h-[30px] rounded-full border-2 transition-transform duration-150 hover:scale-110 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[3px] ${
@@ -274,7 +286,7 @@ function PiecePanel({
       </div>
 
       <div className="flex justify-center gap-2" role="group" aria-label={`${garmentLabel} size`}>
-        {SIZES.map(sz => (
+        {sizes.map(sz => (
           <button
             key={sz}
             onClick={() => onSizeChange(sz)}

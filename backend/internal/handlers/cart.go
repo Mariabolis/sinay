@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -55,13 +57,14 @@ type cartItemResp struct {
 }
 
 type cartResp struct {
-	CartID     string         `json:"cart_id"`
-	Items      []cartItemResp `json:"items"`
-	ItemCount  int            `json:"item_count"`
-	Subtotal   float64        `json:"subtotal"`
-	CouponCode *string        `json:"coupon_code"`
-	Discount   float64        `json:"discount"`
-	Total      float64        `json:"total"`
+	CartID      string         `json:"cart_id"`
+	Items       []cartItemResp `json:"items"`
+	ItemCount   int            `json:"item_count"`
+	Subtotal    float64        `json:"subtotal"`
+	CouponCode  *string        `json:"coupon_code"`
+	Discount    float64        `json:"discount"`
+	FreeShipping bool          `json:"free_shipping"`
+	Total       float64        `json:"total"`
 }
 
 // ── cart resolution ───────────────────────────────────────────────────────────
@@ -152,46 +155,149 @@ func (h *CartHandler) buildResponse(cartID uuid.UUID) (*cartResp, error) {
 		subtotal += item.UnitPrice * float64(item.Quantity)
 	}
 
-	discount := h.computeDiscount(&cart, subtotal)
+	discount, freeShipping := h.computeDiscount(&cart, subtotal)
 	total := subtotal - discount
 	if total < 0 {
 		total = 0
 	}
 
 	return &cartResp{
-		CartID:     cart.ID.String(),
-		Items:      items,
-		ItemCount:  len(items),
-		Subtotal:   subtotal,
-		CouponCode: cart.CouponCode,
-		Discount:   discount,
-		Total:      total,
+		CartID:       cart.ID.String(),
+		Items:        items,
+		ItemCount:    len(items),
+		Subtotal:     subtotal,
+		CouponCode:   cart.CouponCode,
+		Discount:     discount,
+		FreeShipping: freeShipping,
+		Total:        total,
 	}, nil
 }
 
-func (h *CartHandler) computeDiscount(cart *models.Cart, subtotal float64) float64 {
+func (h *CartHandler) computeDiscount(cart *models.Cart, subtotal float64) (float64, bool) {
 	if cart.CouponCode == nil || *cart.CouponCode == "" {
-		return 0
+		return 0, false
 	}
 	var coupon models.Coupon
 	if h.db.Where("code = ? AND active = true", *cart.CouponCode).First(&coupon).Error != nil {
-		return 0
+		return 0, false
+	}
+	return computeCouponDiscount(&coupon, cart.Items, subtotal)
+}
+
+// computeCouponDiscount is the shared discount engine used by cart and checkout.
+// items must be preloaded with Variant.Product.
+func computeCouponDiscount(coupon *models.Coupon, items []models.CartItem, subtotal float64) (discount float64, freeShipping bool) {
+	if !coupon.Active {
+		return
 	}
 	if coupon.ExpiresAt != nil && coupon.ExpiresAt.Before(time.Now()) {
-		return 0
+		return
 	}
 	if coupon.UsageLimit != nil && coupon.TimesUsed >= *coupon.UsageLimit {
-		return 0
+		return
 	}
 	if coupon.MinOrderValue != nil && subtotal < *coupon.MinOrderValue {
-		return 0
+		return
 	}
+
+	switch coupon.DiscountCategory {
+	case "", "order":
+		discount = applyValueDiscount(coupon, subtotal)
+
+	case "product":
+		var productIDs []string
+		if len(coupon.AppliesToProducts) > 0 {
+			json.Unmarshal(coupon.AppliesToProducts, &productIDs) //nolint:errcheck
+		}
+		if len(productIDs) == 0 {
+			discount = applyValueDiscount(coupon, subtotal)
+			return
+		}
+		pidSet := make(map[string]bool, len(productIDs))
+		for _, id := range productIDs {
+			pidSet[id] = true
+		}
+		matchTotal := 0.0
+		for _, item := range items {
+			if item.Variant != nil && item.Variant.Product != nil &&
+				pidSet[item.Variant.Product.ID.String()] {
+				matchTotal += item.UnitPrice * float64(item.Quantity)
+			}
+		}
+		discount = applyValueDiscount(coupon, matchTotal)
+
+	case "bxgy":
+		var buyIDs, getIDs []string
+		if len(coupon.BuyProductIds) > 0 {
+			json.Unmarshal(coupon.BuyProductIds, &buyIDs) //nolint:errcheck
+		}
+		if len(coupon.GetProductIds) > 0 {
+			json.Unmarshal(coupon.GetProductIds, &getIDs) //nolint:errcheck
+		}
+
+		buySet := make(map[string]bool)
+		for _, id := range buyIDs {
+			buySet[id] = true
+		}
+		getSet := make(map[string]bool)
+		for _, id := range getIDs {
+			getSet[id] = true
+		}
+
+		buyCount := 0
+		for _, item := range items {
+			if len(buyIDs) == 0 {
+				buyCount += item.Quantity
+			} else if item.Variant != nil && item.Variant.Product != nil &&
+				buySet[item.Variant.Product.ID.String()] {
+				buyCount += item.Quantity
+			}
+		}
+		if coupon.BuyQuantity == nil || buyCount < *coupon.BuyQuantity {
+			return
+		}
+
+		var candidates []float64
+		for _, item := range items {
+			matches := len(getIDs) == 0
+			if !matches && item.Variant != nil && item.Variant.Product != nil {
+				matches = getSet[item.Variant.Product.ID.String()]
+			}
+			if matches {
+				for q := 0; q < item.Quantity; q++ {
+					candidates = append(candidates, item.UnitPrice)
+				}
+			}
+		}
+		sort.Float64s(candidates) // cheapest units first
+
+		getQty := 1
+		if coupon.GetQuantity != nil {
+			getQty = *coupon.GetQuantity
+		}
+		pct := 100.0
+		if coupon.GetDiscountPercent != nil {
+			pct = *coupon.GetDiscountPercent
+		}
+		total := 0.0
+		for i := 0; i < getQty && i < len(candidates); i++ {
+			total += candidates[i] * pct / 100
+		}
+		discount = math.Round(total*100) / 100
+
+	case "shipping":
+		freeShipping = true
+	}
+	return
+}
+
+func applyValueDiscount(coupon *models.Coupon, amount float64) float64 {
 	switch coupon.Type {
 	case "percent":
-		return math.Round(subtotal*coupon.Value/100*100) / 100
+		return math.Round(amount*coupon.Value/100*100) / 100
 	case "fixed":
-		if coupon.Value > subtotal {
-			return subtotal
+		if coupon.Value > amount {
+			return amount
 		}
 		return coupon.Value
 	}

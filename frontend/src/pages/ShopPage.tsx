@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { productsApi, type Product, type ColorOption } from '../api/products'
+import { productsApi, type Product, type ColorOption, type ProductStyleOption } from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
 
@@ -12,22 +12,23 @@ const TYPE_OPTS = [
   { value: 'bottom', label: 'Bottoms' },
 ]
 
-const TOP_STYLES    = ['classic_short_sleeve', 'sleeveless', 'relaxed_shirt']
-const BOTTOM_STYLES = ['shorts', 'bermuda', 'wide_leg']
-const SIZES         = ['S', 'M', 'L', 'XL']
+const DEFAULT_TOP_STYLES: ProductStyleOption[] = [
+  { key: 'classic_short_sleeve', label: 'Short-sleeve'  },
+  { key: 'sleeveless',           label: 'Sleeveless'    },
+  { key: 'relaxed_shirt',        label: 'Relaxed shirt' },
+]
 
-const STYLE_LABELS: Record<string, string> = {
-  classic_short_sleeve: 'Short-sleeve',
-  sleeveless:           'Sleeveless',
-  relaxed_shirt:        'Relaxed shirt',
-  shorts:               'Shorts',
-  bermuda:              'Bermuda',
-  wide_leg:             'Wide-leg',
-}
+const DEFAULT_BOTTOM_STYLES: ProductStyleOption[] = [
+  { key: 'shorts',   label: 'Shorts'   },
+  { key: 'bermuda',  label: 'Bermuda'  },
+  { key: 'wide_leg', label: 'Wide-leg' },
+]
 
 // ── product card ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({
+  product, sizes, styleLabels,
+}: { product: Product; sizes: string[]; styleLabels: Record<string, string> }) {
   const setCart = useCartStore(s => s.setCart)
 
   const uniqueColors = useMemo(() => {
@@ -108,7 +109,7 @@ function ProductCard({ product }: { product: Product }) {
         <h3 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h3>
       </Link>
       <p className="text-[11.5px] text-[#8a7c72] mb-2">
-        {STYLE_LABELS[product.style] ?? product.style}
+        {styleLabels[product.style] ?? product.style}
       </p>
       <p className="text-[13px] text-mocha mb-3">EGP {product.base_price.toFixed(0)}</p>
 
@@ -132,7 +133,7 @@ function ProductCard({ product }: { product: Product }) {
 
       {/* size pills */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap" role="group" aria-label="size">
-        {SIZES.map(sz => {
+        {sizes.map(sz => {
           const exists   = sizesForColor.includes(sz)
           const inStock  = inStockForColor.includes(sz)
           const selected = activeSize === sz
@@ -184,13 +185,21 @@ export default function ShopPage() {
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
   const [colors, setColors]     = useState<ColorOption[]>([])
+  const [sizes, setSizes]       = useState<string[]>(['S', 'M', 'L', 'XL'])
+
+  const [topStyles,    setTopStyles]    = useState<ProductStyleOption[]>(DEFAULT_TOP_STYLES)
+  const [bottomStyles, setBottomStyles] = useState<ProductStyleOption[]>(DEFAULT_BOTTOM_STYLES)
+  const styleLabels = useMemo(
+    () => Object.fromEntries([...topStyles, ...bottomStyles].map(s => [s.key, s.label])),
+    [topStyles, bottomStyles],
+  )
 
   // Available styles depend on selected type
   const styleOptions = useMemo(() => {
-    if (activeType === 'top')    return TOP_STYLES
-    if (activeType === 'bottom') return BOTTOM_STYLES
-    return [...TOP_STYLES, ...BOTTOM_STYLES]
-  }, [activeType])
+    if (activeType === 'top')    return topStyles.map(s => s.key)
+    if (activeType === 'bottom') return bottomStyles.map(s => s.key)
+    return [...topStyles, ...bottomStyles].map(s => s.key)
+  }, [activeType, topStyles, bottomStyles])
 
   function setParam(key: string, value: string) {
     setSearchParams(prev => {
@@ -206,6 +215,19 @@ export default function ShopPage() {
   // Fetch color options once
   useEffect(() => {
     productsApi.colors().then(setColors).catch(() => {})
+  }, [])
+
+  // Fetch available sizes once
+  useEffect(() => {
+    productsApi.sizeGuide().then(res => setSizes(res.sizes)).catch(() => {})
+  }, [])
+
+  // Fetch style options once
+  useEffect(() => {
+    productsApi.storeContent().then(res => {
+      setTopStyles(res.product_styles.top)
+      setBottomStyles(res.product_styles.bottom)
+    }).catch(() => {})
   }, [])
 
   // Fetch products on filter change
@@ -283,7 +305,7 @@ export default function ShopPage() {
                   onClick={() => setParam('style', s)}
                   className={activeStyle === s ? pillActive : pillInactive}
                 >
-                  {STYLE_LABELS[s]}
+                  {styleLabels[s]}
                 </button>
               ))}
             </div>
@@ -325,7 +347,7 @@ export default function ShopPage() {
             >
               All
             </button>
-            {SIZES.map(s => (
+            {sizes.map(s => (
               <button
                 key={s}
                 onClick={() => setParam('size', activeSize === s ? '' : s)}
@@ -350,7 +372,7 @@ export default function ShopPage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {products.map(p => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} sizes={sizes} styleLabels={styleLabels} />
             ))}
           </div>
         )}

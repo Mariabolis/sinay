@@ -101,6 +101,33 @@ export interface AdminOrder {
   items:          AdminOrderItem[]
 }
 
+export interface AbandonedCheckoutItem {
+  product_name: string
+  color_name:   string
+  size:         string
+  quantity:     number
+  unit_price:   number
+  image_url:    string | null
+}
+
+export interface AbandonedCheckout {
+  id:             string
+  created_at:     string
+  customer_email: string | null
+  customer_name:  string | null
+  customer_phone: string | null
+  item_count:     number
+  subtotal:       number
+  items:          AbandonedCheckoutItem[]
+}
+
+export interface AbandonedCheckoutsListResponse {
+  checkouts: AbandonedCheckout[]
+  total:     number
+  page:      number
+  per_page:  number
+}
+
 export interface AdminOrdersListResponse {
   orders:   AdminOrder[]
   total:    number
@@ -127,18 +154,27 @@ export interface InventoryResponse {
   threshold: number
 }
 
+export type DiscountCategory = 'order' | 'product' | 'bxgy' | 'shipping'
+
 export interface AdminCoupon {
-  id:              string
-  code:            string
-  type:            'percent' | 'fixed'
-  value:           number
-  active:          boolean
-  expires_at:      string | null
-  min_order_value: number | null
-  usage_limit:     number | null
-  times_used:      number
-  created_at:      string
-  status:          'Active' | 'Expired' | 'Used Up' | 'Disabled'
+  id:                   string
+  code:                 string
+  discount_category:    DiscountCategory
+  type:                 'percent' | 'fixed'
+  value:                number
+  active:               boolean
+  expires_at:           string | null
+  min_order_value:      number | null
+  usage_limit:          number | null
+  times_used:           number
+  created_at:           string
+  status:               'Active' | 'Expired' | 'Used Up' | 'Disabled'
+  applies_to_products:  string[]
+  buy_quantity:         number | null
+  buy_product_ids:      string[]
+  get_quantity:         number | null
+  get_product_ids:      string[]
+  get_discount_percent: number | null
 }
 
 export interface AdminCouponsListResponse {
@@ -149,13 +185,20 @@ export interface AdminCouponsListResponse {
 }
 
 export interface CouponInput {
-  code:            string
-  type:            'percent' | 'fixed'
-  value:           number
-  active?:         boolean
-  expires_at?:     string | null
-  min_order_value?: number | null
-  usage_limit?:    number | null
+  code:                 string
+  discount_category:    DiscountCategory
+  type?:                'percent' | 'fixed'
+  value?:               number
+  active?:              boolean
+  expires_at?:          string | null
+  min_order_value?:     number | null
+  usage_limit?:         number | null
+  applies_to_products?: string[]
+  buy_quantity?:        number | null
+  buy_product_ids?:     string[]
+  get_quantity?:        number | null
+  get_product_ids?:     string[]
+  get_discount_percent?: number | null
 }
 
 export interface AdminCustomer {
@@ -322,6 +365,15 @@ export const adminApi = {
 
   updateOrderStatus: (id: string, status: string) =>
     client.put<{ status: string; previous: string }>(`/api/admin/orders/${id}/status`, { status }).then(r => r.data),
+
+  // Abandoned checkouts
+  listAbandonedCheckouts: (params?: { page?: number; per_page?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.page)     qs.set('page',     String(params.page))
+    if (params?.per_page) qs.set('per_page', String(params.per_page))
+    const q = qs.toString()
+    return client.get<AbandonedCheckoutsListResponse>(`/api/admin/abandoned-checkouts${q ? '?' + q : ''}`).then(r => r.data)
+  },
 
   // Customers
   listCustomers: (params?: {

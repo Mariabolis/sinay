@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -327,6 +328,68 @@ func (h *ProductHandler) ListShippingFees(c *gin.Context) {
 		zones = []models.ShippingZone{}
 	}
 	c.JSON(http.StatusOK, zones)
+}
+
+// ── GET /api/size-guide ───────────────────────────────────────────────────────
+//
+// Reads the size-guide tables from the generic settings store — admins edit
+// them via PUT /api/admin/settings/size_guide_tops|size_guide_bottoms.
+
+func (h *ProductHandler) SizeGuide(c *gin.Context) {
+	var settings []models.Setting
+	h.db.Where("key IN ?", []string{"size_guide_tops", "size_guide_bottoms", "available_sizes"}).Find(&settings)
+
+	tops := json.RawMessage("[]")
+	bottoms := json.RawMessage("[]")
+	sizes := json.RawMessage(`["S","M","L","XL"]`)
+	for _, s := range settings {
+		switch s.Key {
+		case "size_guide_tops":
+			tops = json.RawMessage(s.Value)
+		case "size_guide_bottoms":
+			bottoms = json.RawMessage(s.Value)
+		case "available_sizes":
+			sizes = json.RawMessage(s.Value)
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"tops": tops, "bottoms": bottoms, "sizes": sizes})
+}
+
+// ── GET /api/store-content ────────────────────────────────────────────────────
+//
+// Storefront copy/config that used to be hardcoded in the frontend — product
+// style labels, the builder's color palette, care-instruction labels, and
+// shipping/returns policy text. Admins edit these via the generic settings
+// endpoints (PUT /api/admin/settings/:key).
+
+func (h *ProductHandler) StoreContent(c *gin.Context) {
+	var settings []models.Setting
+	h.db.Where("key IN ?", []string{
+		"product_styles", "store_colors", "care_icon_labels", "shipping_returns_copy",
+	}).Find(&settings)
+
+	productStyles := json.RawMessage(`{"top":[],"bottom":[]}`)
+	storeColors := json.RawMessage("[]")
+	careIconLabels := json.RawMessage("[]")
+	shippingReturnsCopy := json.RawMessage("{}")
+	for _, s := range settings {
+		switch s.Key {
+		case "product_styles":
+			productStyles = json.RawMessage(s.Value)
+		case "store_colors":
+			storeColors = json.RawMessage(s.Value)
+		case "care_icon_labels":
+			careIconLabels = json.RawMessage(s.Value)
+		case "shipping_returns_copy":
+			shippingReturnsCopy = json.RawMessage(s.Value)
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"product_styles":         productStyles,
+		"store_colors":           storeColors,
+		"care_icon_labels":       careIconLabels,
+		"shipping_returns_copy":  shippingReturnsCopy,
+	})
 }
 
 // ── GET /api/colors ───────────────────────────────────────────────────────────

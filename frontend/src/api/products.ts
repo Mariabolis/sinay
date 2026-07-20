@@ -46,6 +46,50 @@ export interface ColorOption {
   color_hex: string
 }
 
+export interface SizeGuideTopRow {
+  size: string
+  chest: string
+  length: string
+  shoulder: string
+}
+
+export interface SizeGuideBottomRow {
+  size: string
+  waist: string
+  hip: string
+  inseam: string
+}
+
+export interface SizeGuideResponse {
+  tops: SizeGuideTopRow[]
+  bottoms: SizeGuideBottomRow[]
+  sizes: string[]
+}
+
+export interface ProductStyleOption {
+  key: string
+  label: string
+}
+
+export interface StoreColor {
+  hex: string
+  name: string
+}
+
+export interface ShippingReturnsCopy {
+  free_shipping: string
+  delivery: string
+  express: string
+  returns: string
+}
+
+export interface StoreContentResponse {
+  product_styles: { top: ProductStyleOption[]; bottom: ProductStyleOption[] }
+  store_colors: StoreColor[]
+  care_icon_labels: string[]
+  shipping_returns_copy: ShippingReturnsCopy
+}
+
 export interface ProductFilters {
   type?: 'top' | 'bottom'
   style?: string
@@ -106,5 +150,13 @@ export const productsApi = {
 
   colors() {
     return client.get<ColorOption[]>('/api/colors').then(r => r.data)
+  },
+
+  sizeGuide() {
+    return client.get<SizeGuideResponse>('/api/size-guide').then(r => r.data)
+  },
+
+  storeContent() {
+    return client.get<StoreContentResponse>('/api/store-content').then(r => r.data)
   },
 }

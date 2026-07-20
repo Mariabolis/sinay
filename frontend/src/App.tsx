@@ -26,6 +26,7 @@ import AdminSetsPage from './pages/admin/AdminSetsPage'
 import AdminCustomersPage from './pages/admin/AdminCustomersPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import AdminProductFormPage from './pages/admin/AdminProductFormPage'
+import AdminAbandonedCheckoutsPage from './pages/admin/AdminAbandonedCheckoutsPage'
 import { useCartStore } from './store/cartStore'
 
 export default function App() {
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="sets"      element={<AdminSetsPage />} />
         <Route path="orders"         element={<AdminOrdersPage />} />
         <Route path="orders/:id"     element={<AdminOrderDetailPage />} />
+        <Route path="abandoned-checkouts" element={<AdminAbandonedCheckoutsPage />} />
         <Route path="inventory"           element={<AdminInventoryPage />} />
         <Route path="customers/:id"       element={<AdminCustomerDetailPage />} />
         <Route path="customers" element={<AdminCustomersPage />} />

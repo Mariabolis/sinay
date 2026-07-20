@@ -1,72 +1,56 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { productsApi, type Product, type ProductVariant } from '../api/products'
+import {
+  productsApi, type Product, type ProductVariant, type SizeGuideTopRow, type SizeGuideBottomRow,
+  type ShippingReturnsCopy,
+} from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../lib/garmentPaths'
 
-// ── care icon SVGs ─────────────────────────────────────────────────────────────
+// ── care icon SVGs (labels come from admin-editable settings — see CARE_ICON_LABEL_DEFAULTS) ──
 
 const CARE_ICONS = [
-  {
-    label: 'Hand wash cold',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <path d="M10 26c0-3 1-5 2-7l2-4" />
-        <path d="M22 26c0-3-1-5-2-7l-2-4" />
-        <path d="M8 15c0-6 4-10 8-10s8 4 8 10" />
-        <path d="M12 11c0 2 1.5 3 4 3s4-1 4-3" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Gentle cycle',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <circle cx="16" cy="16" r="10" />
-        <circle cx="16" cy="16" r="6" />
-        <path d="M16 6a10 10 0 0 1 7 3" />
-        <path d="M10 22a10 10 0 0 1-3-7" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Do not tumble dry',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <rect x="5" y="7" width="22" height="18" rx="3" />
-        <circle cx="16" cy="16" r="5" />
-        <line x1="5" y1="7" x2="27" y2="25" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Low heat iron',
-    icon: (
-      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <path d="M6 20 Q16 12 26 14 L26 22 Q22 24 16 24 L8 24 Z" />
-        <line x1="12" y1="24" x2="12" y2="27" />
-        <circle cx="20" cy="18" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
+  (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <path d="M10 26c0-3 1-5 2-7l2-4" />
+      <path d="M22 26c0-3-1-5-2-7l-2-4" />
+      <path d="M8 15c0-6 4-10 8-10s8 4 8 10" />
+      <path d="M12 11c0 2 1.5 3 4 3s4-1 4-3" />
+    </svg>
+  ),
+  (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <circle cx="16" cy="16" r="10" />
+      <circle cx="16" cy="16" r="6" />
+      <path d="M16 6a10 10 0 0 1 7 3" />
+      <path d="M10 22a10 10 0 0 1-3-7" />
+    </svg>
+  ),
+  (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <rect x="5" y="7" width="22" height="18" rx="3" />
+      <circle cx="16" cy="16" r="5" />
+      <line x1="5" y1="7" x2="27" y2="25" />
+    </svg>
+  ),
+  (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <path d="M6 20 Q16 12 26 14 L26 22 Q22 24 16 24 L8 24 Z" />
+      <line x1="12" y1="24" x2="12" y2="27" />
+      <circle cx="20" cy="18" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
 ]
 
-// ── size guide data ────────────────────────────────────────────────────────────
+const DEFAULT_CARE_ICON_LABELS = ['Hand wash cold', 'Gentle cycle', 'Do not tumble dry', 'Low heat iron']
 
-const SIZE_GUIDE_TOPS = [
-  { size: 'S',  chest: '84–88',  length: '62',  shoulder: '37' },
-  { size: 'M',  chest: '88–92',  length: '64',  shoulder: '39' },
-  { size: 'L',  chest: '92–96',  length: '66',  shoulder: '41' },
-  { size: 'XL', chest: '96–102', length: '68',  shoulder: '43' },
-]
-
-const SIZE_GUIDE_BOTTOMS = [
-  { size: 'S',  waist: '64–68',  hip: '90–94',  inseam: '28' },
-  { size: 'M',  waist: '68–72',  hip: '94–98',  inseam: '29' },
-  { size: 'L',  waist: '72–76',  hip: '98–104', inseam: '30' },
-  { size: 'XL', waist: '76–82',  hip: '104–110',inseam: '31' },
-]
+const DEFAULT_SHIPPING_RETURNS: ShippingReturnsCopy = {
+  free_shipping: 'Free standard shipping on orders over EGP 900.',
+  delivery:      'Delivered within 3–5 business days across Egypt.',
+  express:       'Express delivery available at checkout (Cairo & Giza).',
+  returns:       'Returns accepted within 14 days, unworn and in original packaging. Contact us via WhatsApp or email to initiate a return.',
+}
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -110,7 +94,9 @@ function GarmentPlaceholder({
 
 // ── Size guide modal ──────────────────────────────────────────────────────────
 
-function SizeGuideModal({ type, onClose }: { type: string; onClose: () => void }) {
+function SizeGuideModal({
+  type, tops, bottoms, onClose,
+}: { type: string; tops: SizeGuideTopRow[]; bottoms: SizeGuideBottomRow[]; onClose: () => void }) {
   const isTop = type === 'top'
 
   return (
@@ -149,7 +135,7 @@ function SizeGuideModal({ type, onClose }: { type: string; onClose: () => void }
               </tr>
             </thead>
             <tbody>
-              {SIZE_GUIDE_TOPS.map(row => (
+              {tops.map(row => (
                 <tr key={row.size} className="border-b border-mocha/8 hover:bg-mocha/5 transition-colors">
                   <td className="py-3 pr-4 font-semibold text-ink">{row.size}</td>
                   <td className="py-3 pr-4 text-ink/70">{row.chest} cm</td>
@@ -170,7 +156,7 @@ function SizeGuideModal({ type, onClose }: { type: string; onClose: () => void }
               </tr>
             </thead>
             <tbody>
-              {SIZE_GUIDE_BOTTOMS.map(row => (
+              {bottoms.map(row => (
                 <tr key={row.size} className="border-b border-mocha/8 hover:bg-mocha/5 transition-colors">
                   <td className="py-3 pr-4 font-semibold text-ink">{row.size}</td>
                   <td className="py-3 pr-4 text-ink/70">{row.waist} cm</td>
@@ -289,6 +275,22 @@ export default function ProductDetailPage() {
   const [added,      setAdded]      = useState(false)
   const [addError,   setAddError]   = useState<string | null>(null)
 
+  const [sizeGuideTops,    setSizeGuideTops]    = useState<SizeGuideTopRow[]>([])
+  const [sizeGuideBottoms, setSizeGuideBottoms] = useState<SizeGuideBottomRow[]>([])
+  const [availableSizes,   setAvailableSizes]   = useState<string[]>(['S', 'M', 'L', 'XL'])
+
+  const [careIconLabels,      setCareIconLabels]      = useState<string[]>(DEFAULT_CARE_ICON_LABELS)
+  const [shippingReturns,     setShippingReturns]     = useState<ShippingReturnsCopy>(DEFAULT_SHIPPING_RETURNS)
+
+  useEffect(() => {
+    productsApi.sizeGuide()
+      .then(res => { setSizeGuideTops(res.tops); setSizeGuideBottoms(res.bottoms); setAvailableSizes(res.sizes) })
+      .catch(() => {})
+    productsApi.storeContent()
+      .then(res => { setCareIconLabels(res.care_icon_labels); setShippingReturns(res.shipping_returns_copy) })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     if (!slug) return
     setLoading(true)
@@ -333,15 +335,14 @@ export default function ProductDetailPage() {
   )
 
   // All sizes for selected color, preserving canonical order
-  const SIZE_ORDER = ['S', 'M', 'L', 'XL']
   const variantsForColor = useMemo(
     () => product?.variants.filter(v => v.color_hex === activeHex) ?? [],
     [product, activeHex],
   )
   const sizesForColor = useMemo(() => {
     const sizeSet = new Set(variantsForColor.map(v => v.size))
-    return SIZE_ORDER.filter(s => sizeSet.has(s))
-  }, [variantsForColor])
+    return availableSizes.filter(s => sizeSet.has(s))
+  }, [variantsForColor, availableSizes])
 
   const activeVariant = useMemo(
     () => variantsForColor.find(v => v.size === activeSize) ?? null,
@@ -411,7 +412,12 @@ export default function ProductDetailPage() {
     <>
       {/* Size guide modal */}
       {sizeGuide && (
-        <SizeGuideModal type={product.type} onClose={() => setSizeGuide(false)} />
+        <SizeGuideModal
+          type={product.type}
+          tops={sizeGuideTops}
+          bottoms={sizeGuideBottoms}
+          onClose={() => setSizeGuide(false)}
+        />
       )}
 
       <div className="bg-cream min-h-screen font-body">
@@ -656,10 +662,10 @@ export default function ProductDetailPage() {
                   <p className="mb-5">{product.care_notes}</p>
                 )}
                 <div className="grid grid-cols-4 gap-3">
-                  {CARE_ICONS.map(({ label, icon }) => (
-                    <div key={label} className="flex flex-col items-center gap-1.5 text-center">
+                  {CARE_ICONS.map((icon, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1.5 text-center">
                       <div className="text-mocha/60">{icon}</div>
-                      <span className="text-[10px] leading-tight text-mocha/50">{label}</span>
+                      <span className="text-[10px] leading-tight text-mocha/50">{careIconLabels[i]}</span>
                     </div>
                   ))}
                 </div>
@@ -671,12 +677,11 @@ export default function ProductDetailPage() {
                 onToggle={() => setOpenPanel(p => p === 'shipping' ? '' : 'shipping')}
               >
                 <ul className="space-y-2">
-                  <li>Free standard shipping on orders over EGP 900.</li>
-                  <li>Delivered within 3–5 business days across Egypt.</li>
-                  <li>Express delivery available at checkout (Cairo & Giza).</li>
+                  <li>{shippingReturns.free_shipping}</li>
+                  <li>{shippingReturns.delivery}</li>
+                  <li>{shippingReturns.express}</li>
                   <li className="pt-1 border-t border-mocha/10 mt-3">
-                    Returns accepted within 14 days, unworn and in original packaging.
-                    Contact us via WhatsApp or email to initiate a return.
+                    {shippingReturns.returns}
                   </li>
                 </ul>
               </AccordionPanel>

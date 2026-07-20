@@ -2,13 +2,21 @@ import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { AdminVariantInput } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { productsApi, type StoreColor } from '../../api/products'
 import ImageUploader from '../../components/admin/ImageUploader'
+
+const DEFAULT_COLORS: StoreColor[] = [
+  { hex: '#EBCFD2', name: 'Dusty Pink' },
+  { hex: '#B9C0AE', name: 'Sage'       },
+  { hex: '#C9D8E8', name: 'Sky Blue'   },
+  { hex: '#8B7568', name: 'Mocha'      },
+]
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const PRODUCT_TYPES = ['top', 'bottom', 'set'] as const
 
-const STYLES_BY_TYPE: Record<string, { value: string; label: string }[]> = {
+const DEFAULT_STYLES_BY_TYPE: Record<string, { value: string; label: string }[]> = {
   top: [
     { value: 'classic_short_sleeve', label: 'Classic Short Sleeve' },
     { value: 'sleeveless',           label: 'Sleeveless'           },
@@ -28,8 +36,6 @@ const STYLES_BY_TYPE: Record<string, { value: string; label: string }[]> = {
     { value: 'wide_leg',             label: 'Wide Leg'             },
   ],
 }
-
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -123,6 +129,19 @@ export default function AdminProductFormPage() {
   const [loading,  setLoading]  = useState(isEdit)
   const [saving,   setSaving]   = useState(false)
   const [errors,   setErrors]   = useState<string[]>([])
+  const [sizes,    setSizes]    = useState<string[]>(['S', 'M', 'L', 'XL'])
+  const [stylesByType, setStylesByType] = useState(DEFAULT_STYLES_BY_TYPE)
+  const [colors, setColors] = useState<StoreColor[]>(DEFAULT_COLORS)
+
+  useEffect(() => {
+    productsApi.sizeGuide().then(res => setSizes(res.sizes)).catch(() => {})
+    productsApi.storeContent().then(res => {
+      const top    = res.product_styles.top.map(s => ({ value: s.key, label: s.label }))
+      const bottom = res.product_styles.bottom.map(s => ({ value: s.key, label: s.label }))
+      setStylesByType({ top, bottom, set: [...top, ...bottom] })
+      setColors(res.store_colors)
+    }).catch(() => {})
+  }, [])
 
   // Load product when editing
   useEffect(() => {
@@ -169,7 +188,7 @@ export default function AdminProductFormPage() {
 
   // When type changes, reset style to first option of that type
   function handleTypeChange(type: string) {
-    const styles = STYLES_BY_TYPE[type] ?? []
+    const styles = stylesByType[type] ?? []
     setDraft(d => ({ ...d, type, style: styles[0]?.value ?? '' }))
   }
 
@@ -264,7 +283,7 @@ export default function AdminProductFormPage() {
     return <p className="text-[#8B7568] text-sm">Loading…</p>
   }
 
-  const styleOptions = STYLES_BY_TYPE[draft.type] ?? []
+  const styleOptions = stylesByType[draft.type] ?? []
 
   return (
     <div className="max-w-4xl">
@@ -416,6 +435,8 @@ export default function AdminProductFormPage() {
                   index={idx}
                   productSlug={draft.slug}
                   autoSKU={autoSKU}
+                  sizes={sizes}
+                  colors={colors}
                   onChange={patch => updateVariant(v._key, patch)}
                   onRemove={() => removeVariant(v._key)}
                 />
@@ -468,18 +489,21 @@ interface VariantRowProps {
   index:       number
   productSlug: string
   autoSKU:     (slug: string, color: string, size: string) => string
+  sizes:       string[]
+  colors:      StoreColor[]
   onChange:    (patch: Partial<VariantDraft>) => void
   onRemove:    () => void
 }
 
-function VariantRow({ variant, index, productSlug, autoSKU, onChange, onRemove }: VariantRowProps) {
+function VariantRow({ variant, index, productSlug, autoSKU, sizes, colors, onChange, onRemove }: VariantRowProps) {
   const inputCls =
     'w-full border border-[#d8cfc5] rounded-lg px-2.5 py-1.5 text-xs text-[#4A3F38] ' +
     'placeholder:text-[#b0a89f] focus:outline-none focus:border-[#8B7568] bg-white transition-colors'
 
-  function handleColorChange(colorName: string) {
+  function handleColorChange(hex: string) {
+    const colorName = colors.find(c => c.hex === hex)?.name ?? ''
     const sku = variant.id ? variant.sku : autoSKU(productSlug, colorName, variant.size)
-    onChange({ color_name: colorName, sku })
+    onChange({ color_hex: hex, color_name: colorName, sku })
   }
 
   function handleSizeChange(size: string) {
@@ -504,34 +528,21 @@ function VariantRow({ variant, index, productSlug, autoSKU, onChange, onRemove }
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* Color name */}
+        {/* Color */}
         <div>
-          <label className="block text-[11px] text-[#b0a89f] mb-1">Color Name *</label>
-          <input
-            className={inputCls}
-            value={variant.color_name}
-            onChange={e => handleColorChange(e.target.value)}
-            placeholder="Dusty Pink"
-          />
-        </div>
-
-        {/* Color hex */}
-        <div>
-          <label className="block text-[11px] text-[#b0a89f] mb-1">Color Hex *</label>
+          <label className="block text-[11px] text-[#b0a89f] mb-1">Color *</label>
           <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={variant.color_hex}
-              onChange={e => onChange({ color_hex: e.target.value })}
-              className="w-8 h-8 rounded cursor-pointer border border-[#d8cfc5] p-0.5 bg-white"
+            <span
+              className="w-8 h-8 rounded shrink-0 border border-[#d8cfc5]"
+              style={{ background: variant.color_hex }}
             />
-            <input
+            <select
               className={inputCls}
               value={variant.color_hex}
-              onChange={e => onChange({ color_hex: e.target.value })}
-              placeholder="#EBCFD2"
-              maxLength={7}
-            />
+              onChange={e => handleColorChange(e.target.value)}
+            >
+              {colors.map(c => <option key={c.hex} value={c.hex}>{c.name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -543,7 +554,7 @@ function VariantRow({ variant, index, productSlug, autoSKU, onChange, onRemove }
             value={variant.size}
             onChange={e => handleSizeChange(e.target.value)}
           >
-            {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+            {sizes.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 

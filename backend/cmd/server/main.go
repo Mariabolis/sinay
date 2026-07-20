@@ -63,6 +63,7 @@ func main() {
 	adminCustomerHandler  := handlers.NewAdminCustomerHandler(database)
 	adminSettingHandler   := handlers.NewAdminSettingHandler(database)
 	adminShippingHandler  := handlers.NewAdminShippingHandler(database)
+	adminAbandonedHandler := handlers.NewAdminAbandonedHandler(database)
 
 	uploadHandler, err := handlers.NewUploadHandler(
 		cfg.CloudinaryCloudName,
@@ -88,6 +89,8 @@ func main() {
 		api.GET("/colors",          productHandler.Colors)
 		api.GET("/sets",            productHandler.ListSets)
 		api.GET("/shipping-fees",   productHandler.ListShippingFees)
+		api.GET("/size-guide",      productHandler.SizeGuide)
+		api.GET("/store-content",   productHandler.StoreContent)
 
 		cart := api.Group("/cart")
 		cart.Use(middleware.OptionalAuth(cfg.JWTSecret))
@@ -120,6 +123,7 @@ func main() {
 		admin.Use(adminMW)
 		{
 			admin.GET("/dashboard/summary", adminDashHandler.Summary)
+			admin.GET("/abandoned-checkouts", adminAbandonedHandler.List)
 
 			admin.GET("/products",                    adminProductHandler.List)
 			admin.POST("/products",                   adminProductHandler.Create)
