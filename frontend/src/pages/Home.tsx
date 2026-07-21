@@ -5,7 +5,7 @@ import IconStrip from '../components/home/IconStrip'
 import SetsGrid from '../components/home/SetsGrid'
 import BuilderTeaser from '../components/home/BuilderTeaser'
 import ProductPreviewGrid from '../components/home/ProductPreviewGrid'
-import FooterRibbon from '../components/home/FooterRibbon'
+import TaglineMarquee from '../components/home/TaglineMarquee'
 
 export default function Home() {
   return (
@@ -28,7 +28,7 @@ export default function Home() {
 
       <ProductPreviewGrid />
 
-      <FooterRibbon />
+      <TaglineMarquee />
     </>
   )
 }

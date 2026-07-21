@@ -13,6 +13,10 @@ import ProductDetailPage from './pages/ProductDetailPage'
 import BuildYourSetPage from './pages/BuildYourSetPage'
 import OrdersPage from './pages/OrdersPage'
 import AccountPage from './pages/AccountPage'
+import ContactPage from './pages/ContactPage'
+import FAQPage from './pages/FAQPage'
+import ShippingReturnsPage from './pages/ShippingReturnsPage'
+import SizeGuidePage from './pages/SizeGuidePage'
 import NotFoundPage from './pages/NotFoundPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminOverviewPage from './pages/admin/AdminOverviewPage'
@@ -72,6 +76,10 @@ export default function App() {
         <Route path="/build-your-set"            element={<BuildYourSetPage />} />
         <Route path="/orders"                    element={<OrdersPage />} />
         <Route path="/account"                   element={<AccountPage />} />
+        <Route path="/contact"                   element={<ContactPage />} />
+        <Route path="/faq"                       element={<FAQPage />} />
+        <Route path="/shipping-returns"          element={<ShippingReturnsPage />} />
+        <Route path="/size-guide"                element={<SizeGuidePage />} />
         <Route path="*"                          element={<NotFoundPage />} />
       </Route>
     </Routes>

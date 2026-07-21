@@ -365,13 +365,14 @@ func (h *ProductHandler) SizeGuide(c *gin.Context) {
 func (h *ProductHandler) StoreContent(c *gin.Context) {
 	var settings []models.Setting
 	h.db.Where("key IN ?", []string{
-		"product_styles", "store_colors", "care_icon_labels", "shipping_returns_copy",
+		"product_styles", "store_colors", "care_icon_labels", "shipping_returns_copy", "contact_info",
 	}).Find(&settings)
 
 	productStyles := json.RawMessage(`{"top":[],"bottom":[]}`)
 	storeColors := json.RawMessage("[]")
 	careIconLabels := json.RawMessage("[]")
 	shippingReturnsCopy := json.RawMessage("{}")
+	contactInfo := json.RawMessage("{}")
 	for _, s := range settings {
 		switch s.Key {
 		case "product_styles":
@@ -382,11 +383,14 @@ func (h *ProductHandler) StoreContent(c *gin.Context) {
 			careIconLabels = json.RawMessage(s.Value)
 		case "shipping_returns_copy":
 			shippingReturnsCopy = json.RawMessage(s.Value)
+		case "contact_info":
+			contactInfo = json.RawMessage(s.Value)
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"product_styles":         productStyles,
 		"store_colors":           storeColors,
+		"contact_info":           contactInfo,
 		"care_icon_labels":       careIconLabels,
 		"shipping_returns_copy":  shippingReturnsCopy,
 	})

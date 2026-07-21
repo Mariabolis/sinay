@@ -83,11 +83,17 @@ export interface ShippingReturnsCopy {
   returns: string
 }
 
+export interface ContactInfo {
+  email: string
+  whatsapp: string
+}
+
 export interface StoreContentResponse {
   product_styles: { top: ProductStyleOption[]; bottom: ProductStyleOption[] }
   store_colors: StoreColor[]
   care_icon_labels: string[]
   shipping_returns_copy: ShippingReturnsCopy
+  contact_info: ContactInfo
 }
 
 export interface ProductFilters {
