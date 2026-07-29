@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { InventoryItem } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonRows } from '../../components/Skeleton'
 
 type FilterMode = 'all' | 'low' | 'oos'
 
@@ -29,6 +30,7 @@ export default function AdminInventoryPage() {
   const [thresholdEdit,   setThresholdEdit]   = useState('')
   const [savingThreshold, setSavingThreshold] = useState(false)
   const [thresholdSaved,  setThresholdSaved]  = useState(false)
+  const [thresholdErr,    setThresholdErr]    = useState('')
 
   useEffect(() => {
     adminApi.listInventory()
@@ -63,6 +65,7 @@ export default function AdminInventoryPage() {
     const n = parseInt(thresholdEdit, 10)
     if (isNaN(n) || n < 0) return
     setSavingThreshold(true)
+    setThresholdErr('')
     try {
       await adminApi.updateSetting('low_stock_threshold', String(n))
       setThreshold(n)
@@ -75,7 +78,7 @@ export default function AdminInventoryPage() {
       setThresholdSaved(true)
       setTimeout(() => setThresholdSaved(false), 2000)
     } catch {
-      alert('Failed to save threshold')
+      setThresholdErr('Failed to save.')
     } finally {
       setSavingThreshold(false)
     }
@@ -186,12 +189,13 @@ export default function AdminInventoryPage() {
               {savingThreshold ? '…' : 'Save'}
             </button>
           )}
+          {thresholdErr && <span className="text-xs text-[#B3564B]">{thresholdErr}</span>}
         </div>
       </div>
 
       {/* ── Table ─────────────────────────────────────────────────────── */}
       {loading ? (
-        <p className="text-[#8B7568] text-sm">Loading…</p>
+        <SkeletonRows count={5} rowClassName="h-12" />
       ) : visible.length === 0 ? (
         <p className="text-[#8B7568] text-sm">No items match.</p>
       ) : (

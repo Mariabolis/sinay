@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AdminCustomer } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonRows } from '../../components/Skeleton'
 
 type SortKey = 'join_date' | 'total_spend' | 'order_count'
 
@@ -110,7 +111,7 @@ export default function AdminCustomersPage() {
       {error ? (
         <p className="text-red-500 text-sm">{error}</p>
       ) : loading ? (
-        <p className="text-[#8B7568] text-sm">Loading…</p>
+        <SkeletonRows count={5} rowClassName="h-12" />
       ) : customers.length === 0 ? (
         <p className="text-[#8B7568] text-sm">No customers found.</p>
       ) : (

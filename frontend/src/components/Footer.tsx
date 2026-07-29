@@ -19,8 +19,9 @@ const HELP_LINKS = [
 const ACCOUNT_LINKS = [
   { label: 'Log In',      to: '/login'   },
   { label: 'Register',    to: '/register' },
-  { label: 'My Orders',   to: '/orders'  },
+  { label: 'My Orders',   to: '/account/orders' },
   { label: 'My Account',  to: '/account' },
+  { label: 'My Wishlist', to: '/wishlist' },
   { label: 'My Bag',      to: '/cart'    },
 ]
 

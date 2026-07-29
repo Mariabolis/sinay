@@ -6,13 +6,23 @@ import ShopPage from './pages/ShopPage'
 import CartPage from './pages/CartPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import CheckoutPage from './pages/CheckoutPage'
 import PaymentResultPage from './pages/PaymentResultPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import BuildYourSetPage from './pages/BuildYourSetPage'
-import OrdersPage from './pages/OrdersPage'
-import AccountPage from './pages/AccountPage'
+import AccountLayout from './pages/account/AccountLayout'
+import AccountOverviewPage from './pages/account/AccountOverviewPage'
+import AccountProfilePage from './pages/account/AccountProfilePage'
+import AccountPasswordPage from './pages/account/AccountPasswordPage'
+import AccountOrdersPage from './pages/account/AccountOrdersPage'
+import AccountOrderDetailPage from './pages/account/AccountOrderDetailPage'
+import AccountAddressesPage from './pages/account/AccountAddressesPage'
+import AccountSavedSetsPage from './pages/account/AccountSavedSetsPage'
+import AccountRecentlyViewedPage from './pages/account/AccountRecentlyViewedPage'
+import WishlistPage from './pages/WishlistPage'
 import ContactPage from './pages/ContactPage'
 import FAQPage from './pages/FAQPage'
 import ShippingReturnsPage from './pages/ShippingReturnsPage'
@@ -69,13 +79,25 @@ export default function App() {
         <Route path="/cart"                      element={<CartPage />} />
         <Route path="/login"                     element={<LoginPage />} />
         <Route path="/register"                  element={<RegisterPage />} />
+        <Route path="/forgot-password"            element={<ForgotPasswordPage />} />
+        <Route path="/reset-password"             element={<ResetPasswordPage />} />
         <Route path="/checkout"                  element={<CheckoutPage />} />
         <Route path="/payment/result"            element={<PaymentResultPage />} />
         <Route path="/order/:id/confirmation"    element={<OrderConfirmationPage />} />
         <Route path="/product/:slug"             element={<ProductDetailPage />} />
         <Route path="/build-your-set"            element={<BuildYourSetPage />} />
-        <Route path="/orders"                    element={<OrdersPage />} />
-        <Route path="/account"                   element={<AccountPage />} />
+        <Route path="/orders"                    element={<Navigate to="/account/orders" replace />} />
+        <Route path="/account" element={<AccountLayout />}>
+          <Route index                  element={<AccountOverviewPage />} />
+          <Route path="profile"         element={<AccountProfilePage />} />
+          <Route path="password"        element={<AccountPasswordPage />} />
+          <Route path="orders"          element={<AccountOrdersPage />} />
+          <Route path="orders/:id"      element={<AccountOrderDetailPage />} />
+          <Route path="addresses"       element={<AccountAddressesPage />} />
+          <Route path="saved-sets"      element={<AccountSavedSetsPage />} />
+          <Route path="recently-viewed" element={<AccountRecentlyViewedPage />} />
+        </Route>
+        <Route path="/wishlist"                  element={<WishlistPage />} />
         <Route path="/contact"                   element={<ContactPage />} />
         <Route path="/faq"                       element={<FAQPage />} />
         <Route path="/shipping-returns"          element={<ShippingReturnsPage />} />

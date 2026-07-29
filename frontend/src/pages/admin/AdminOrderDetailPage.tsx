@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { AdminOrder } from '../../api/admin'
 import { adminApi } from '../../api/admin'
 import { StatusBadge, STATUS_CONFIG } from './AdminOrdersPage'
+import { SkeletonBlock } from '../../components/Skeleton'
 
 // Status transition graph — mirrors the backend allowedTransitions map
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -60,7 +61,15 @@ export default function AdminOrderDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-[#8B7568] text-sm">Loading…</p>
+  if (loading) {
+    return (
+      <div className="space-y-5 max-w-3xl">
+        <SkeletonBlock className="h-6 w-40" />
+        <SkeletonBlock className="h-40 w-full rounded-xl" />
+        <SkeletonBlock className="h-40 w-full rounded-xl" />
+      </div>
+    )
+  }
   if (error || !order) return (
     <div>
       <p className="text-red-500 text-sm mb-3">{error || 'Order not found'}</p>

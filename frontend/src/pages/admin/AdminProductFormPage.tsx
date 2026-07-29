@@ -4,6 +4,7 @@ import type { AdminVariantInput } from '../../api/admin'
 import { adminApi } from '../../api/admin'
 import { productsApi, type StoreColor } from '../../api/products'
 import ImageUploader from '../../components/admin/ImageUploader'
+import { SkeletonBlock } from '../../components/Skeleton'
 
 const DEFAULT_COLORS: StoreColor[] = [
   { hex: '#EBCFD2', name: 'Dusty Pink' },
@@ -280,7 +281,13 @@ export default function AdminProductFormPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
-    return <p className="text-[#8B7568] text-sm">Loading…</p>
+    return (
+      <div className="max-w-4xl space-y-5">
+        <SkeletonBlock className="h-6 w-48" />
+        <SkeletonBlock className="h-64 w-full rounded-xl" />
+        <SkeletonBlock className="h-40 w-full rounded-xl" />
+      </div>
+    )
   }
 
   const styleOptions = stylesByType[draft.type] ?? []

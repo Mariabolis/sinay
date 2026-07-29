@@ -11,16 +11,18 @@ import (
 	"gorm.io/gorm"
 
 	"sinay/backend/internal/models"
+	"sinay/backend/internal/services/email"
 	"sinay/backend/internal/services/payment"
 )
 
 type PaymentCallbackHandler struct {
 	db     *gorm.DB
 	paymob *payment.Service
+	email  *email.Service
 }
 
-func NewPaymentCallbackHandler(db *gorm.DB, paymob *payment.Service) *PaymentCallbackHandler {
-	return &PaymentCallbackHandler{db: db, paymob: paymob}
+func NewPaymentCallbackHandler(db *gorm.DB, paymob *payment.Service, emailSvc *email.Service) *PaymentCallbackHandler {
+	return &PaymentCallbackHandler{db: db, paymob: paymob, email: emailSvc}
 }
 
 // POST /api/payments/paymob/callback
@@ -100,6 +102,7 @@ func (h *PaymentCallbackHandler) PaymobCallback(c *gin.Context) {
 		h.db.Model(&models.Order{}).
 			Where("id = ?", pmt.OrderID).
 			Update("status", "paid")
+		go sendOrderConfirmationEmail(h.db, h.email, pmt.OrderID)
 
 		// Decrement stock for every ordered item
 		var orderItems []models.OrderItem

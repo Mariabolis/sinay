@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,15 +16,17 @@ import (
 
 	"sinay/backend/internal/config"
 	"sinay/backend/internal/models"
+	"sinay/backend/internal/services/email"
 )
 
 type AuthHandler struct {
-	db  *gorm.DB
-	cfg *config.Config
+	db    *gorm.DB
+	cfg   *config.Config
+	email *email.Service
 }
 
-func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
-	return &AuthHandler{db: db, cfg: cfg}
+func NewAuthHandler(db *gorm.DB, cfg *config.Config, emailSvc *email.Service) *AuthHandler {
+	return &AuthHandler{db: db, cfg: cfg, email: emailSvc}
 }
 
 // ── request bodies ────────────────────────────────────────────────────────────
@@ -169,16 +174,21 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 // PUT /api/auth/me
+// Changing email requires current_password to confirm it's really the
+// account owner — name/phone can change freely without it.
 func (h *AuthHandler) UpdateMe(c *gin.Context) {
 	user := c.MustGet("user").(models.User)
 	var req struct {
-		FullName string `json:"full_name"`
-		Phone    string `json:"phone"`
+		FullName        string `json:"full_name"`
+		Phone           string `json:"phone"`
+		Email           string `json:"email"`
+		CurrentPassword string `json:"current_password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	updates := map[string]any{}
 	if req.FullName != "" {
 		updates["full_name"] = req.FullName
@@ -186,6 +196,24 @@ func (h *AuthHandler) UpdateMe(c *gin.Context) {
 	if req.Phone != "" {
 		updates["phone"] = req.Phone
 	}
+
+	if req.Email != "" && req.Email != user.Email {
+		if req.CurrentPassword == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "current_password is required to change email"})
+			return
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
+			return
+		}
+		var existing models.User
+		if h.db.Where("email = ? AND id != ?", req.Email, user.ID).First(&existing).Error == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "email already registered"})
+			return
+		}
+		updates["email"] = req.Email
+	}
+
 	if len(updates) > 0 {
 		h.db.Model(&user).Updates(updates)
 	}
@@ -196,6 +224,114 @@ func (h *AuthHandler) UpdateMe(c *gin.Context) {
 		FullName: derefStr(user.FullName),
 		Role:     user.Role,
 	})
+}
+
+// PUT /api/auth/password
+func (h *AuthHandler) UpdatePassword(c *gin.Context) {
+	user := c.MustGet("user").(models.User)
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password"     binding:"required,min=8"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
+		return
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	h.db.Model(&user).Update("password_hash", string(newHash))
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated."})
+}
+
+// POST /api/auth/forgot-password
+// Always responds with a generic success message, whether or not the email
+// is registered — this prevents leaking which emails have accounts.
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	const genericMsg = "If that email has an account, we've sent a password reset link."
+
+	var user models.User
+	if h.db.Where("email = ?", req.Email).First(&user).Error != nil {
+		c.JSON(http.StatusOK, gin.H{"message": genericMsg})
+		return
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	rawHex := hex.EncodeToString(rawToken)
+	hash := sha256.Sum256([]byte(rawHex))
+
+	reset := models.PasswordReset{
+		UserID:    user.ID,
+		TokenHash: hex.EncodeToString(hash[:]),
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}
+	if err := h.db.Create(&reset).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.cfg.FrontendURL, rawHex)
+	html := fmt.Sprintf(`
+		<div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#4A3F38">
+			<h2 style="font-weight:600">Reset your password</h2>
+			<p>Click the link below to set a new password. This link expires in 1 hour.</p>
+			<p><a href="%s" style="color:#8B7568">%s</a></p>
+			<p style="color:#8B7568;font-size:13px">Didn't request this? You can ignore this email.</p>
+		</div>`, resetLink, resetLink)
+	h.email.Send(user.Email, "Reset your SINAY password", html)
+
+	c.JSON(http.StatusOK, gin.H{"message": genericMsg})
+}
+
+// POST /api/auth/reset-password
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req struct {
+		Token    string `json:"token"    binding:"required"`
+		Password string `json:"password" binding:"required,min=8"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	hash := sha256.Sum256([]byte(req.Token))
+	tokenHash := hex.EncodeToString(hash[:])
+
+	var reset models.PasswordReset
+	if h.db.Where("token_hash = ? AND used = false AND expires_at > ?", tokenHash, time.Now()).
+		First(&reset).Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired reset link"})
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	h.db.Model(&models.User{}).Where("id = ?", reset.UserID).Update("password_hash", string(newHash))
+	h.db.Model(&reset).Update("used", true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated — you can log in now."})
 }
 
 // ── token helpers ─────────────────────────────────────────────────────────────

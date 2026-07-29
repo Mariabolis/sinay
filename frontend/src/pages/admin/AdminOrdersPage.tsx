@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AdminOrder } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonRows } from '../../components/Skeleton'
 
 // ── shared status config (same palette as customer OrdersPage) ─────────────────
 export const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
@@ -130,7 +131,7 @@ export default function AdminOrdersPage() {
       {error ? (
         <p className="text-red-500 text-sm">{error}</p>
       ) : loading ? (
-        <p className="text-[#8B7568] text-sm">Loading…</p>
+        <SkeletonRows count={5} rowClassName="h-12" />
       ) : orders.length === 0 ? (
         <p className="text-[#8B7568] text-sm">No orders found.</p>
       ) : (

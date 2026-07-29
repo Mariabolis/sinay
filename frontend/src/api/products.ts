@@ -101,6 +101,7 @@ export interface ProductFilters {
   style?: string
   color?: string
   size?: string
+  search?: string
   page?: number
   per_page?: number
 }
@@ -144,6 +145,7 @@ export const productsApi = {
     if (filters?.style)    params.set('style',    filters.style)
     if (filters?.color)    params.set('color',    filters.color)
     if (filters?.size)     params.set('size',     filters.size)
+    if (filters?.search)   params.set('search',   filters.search)
     if (filters?.page)     params.set('page',     String(filters.page))
     if (filters?.per_page) params.set('per_page', String(filters.per_page))
     const qs = params.toString()

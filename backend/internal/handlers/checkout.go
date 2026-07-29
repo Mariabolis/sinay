@@ -13,16 +13,18 @@ import (
 	"gorm.io/gorm"
 
 	"sinay/backend/internal/models"
+	"sinay/backend/internal/services/email"
 	"sinay/backend/internal/services/payment"
 )
 
 type CheckoutHandler struct {
 	db     *gorm.DB
 	paymob *payment.Service
+	email  *email.Service
 }
 
-func NewCheckoutHandler(db *gorm.DB, paymob *payment.Service) *CheckoutHandler {
-	return &CheckoutHandler{db: db, paymob: paymob}
+func NewCheckoutHandler(db *gorm.DB, paymob *payment.Service, emailSvc *email.Service) *CheckoutHandler {
+	return &CheckoutHandler{db: db, paymob: paymob, email: emailSvc}
 }
 
 // ── POST /api/checkout ────────────────────────────────────────────────────────
@@ -198,6 +200,7 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 		}
 		// Clear the cart
 		h.db.Where("cart_id = ?", cart.ID).Delete(&models.CartItem{})
+		go sendOrderConfirmationEmail(h.db, h.email, order.ID)
 		c.JSON(http.StatusCreated, gin.H{"order_id": order.ID.String()})
 		return
 	}
@@ -328,6 +331,7 @@ func (h *CheckoutHandler) ListOrders(c *gin.Context) {
 		Preload("Items.Variant").
 		Preload("Items").
 		Preload("Payment").
+		Preload("Address").
 		Where("user_id = ?", user.ID).
 		Order("created_at DESC").
 		Find(&orders).Error; err != nil {
@@ -357,6 +361,7 @@ func (h *CheckoutHandler) GetOrder(c *gin.Context) {
 		Preload("Items.Variant").
 		Preload("Items").
 		Preload("Payment").
+		Preload("Address").
 		Where("id = ? AND user_id = ?", orderID, user.ID).
 		First(&order).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
@@ -389,17 +394,18 @@ type orderItemResp struct {
 }
 
 type orderResp struct {
-	ID            string          `json:"id"`
-	Status        string          `json:"status"`
-	PaymentMethod string          `json:"payment_method"`
-	Subtotal      float64         `json:"subtotal"`
-	Discount      float64         `json:"discount"`
-	ShippingFee   float64         `json:"shipping_fee"`
-	Total         float64         `json:"total"`
-	CouponCode    *string         `json:"coupon_code"`
-	Items         []orderItemResp `json:"items"`
-	PaymentStatus string          `json:"payment_status"`
-	CreatedAt     string          `json:"created_at"`
+	ID            string            `json:"id"`
+	Status        string            `json:"status"`
+	PaymentMethod string            `json:"payment_method"`
+	Subtotal      float64           `json:"subtotal"`
+	Discount      float64           `json:"discount"`
+	ShippingFee   float64           `json:"shipping_fee"`
+	Total         float64           `json:"total"`
+	CouponCode    *string           `json:"coupon_code"`
+	Items         []orderItemResp   `json:"items"`
+	PaymentStatus string            `json:"payment_status"`
+	CreatedAt     string            `json:"created_at"`
+	Address       *adminAddressResp `json:"address"`
 }
 
 func toOrderResp(o models.Order) orderResp {
@@ -437,6 +443,20 @@ func toOrderResp(o models.Order) orderResp {
 		pmtStatus = o.Payment.Status
 	}
 
+	var addr *adminAddressResp
+	if o.Address != nil {
+		a := o.Address
+		addr = &adminAddressResp{
+			FullName:    a.FullName,
+			Phone:       a.Phone,
+			Governorate: a.Governorate,
+			City:        a.City,
+			Street:      a.Street,
+			Building:    a.Building,
+			Notes:       a.Notes,
+		}
+	}
+
 	return orderResp{
 		ID:            o.ID.String(),
 		Status:        o.Status,
@@ -449,5 +469,6 @@ func toOrderResp(o models.Order) orderResp {
 		Items:         items,
 		PaymentStatus: pmtStatus,
 		CreatedAt:     o.CreatedAt.Format(time.RFC3339),
+		Address:       addr,
 	}
 }

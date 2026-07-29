@@ -9,6 +9,7 @@ import (
 	"sinay/backend/internal/db"
 	"sinay/backend/internal/handlers"
 	"sinay/backend/internal/middleware"
+	"sinay/backend/internal/services/email"
 	"sinay/backend/internal/services/payment"
 )
 
@@ -47,13 +48,22 @@ func main() {
 		cfg.PaymobIframeID,
 		cfg.PaymobHMACSecret,
 	)
+	switch {
+	case cfg.SMTPHost != "":
+		log.Printf("email: sending via Gmail SMTP as %s", cfg.SMTPUser)
+	case cfg.ResendAPIKey != "":
+		log.Println("email: sending via Resend")
+	default:
+		log.Println("WARNING: no email provider configured — emails will be logged, not sent")
+	}
+	emailSvc := email.NewService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword)
 
-	authHandler          := handlers.NewAuthHandler(database, cfg)
+	authHandler          := handlers.NewAuthHandler(database, cfg, emailSvc)
 	productHandler       := handlers.NewProductHandler(database)
 	cartHandler          := handlers.NewCartHandler(database)
-	checkoutHandler      := handlers.NewCheckoutHandler(database, paymobSvc)
+	checkoutHandler      := handlers.NewCheckoutHandler(database, paymobSvc, emailSvc)
 	addressHandler       := handlers.NewAddressHandler(database)
-	callbackHandler      := handlers.NewPaymentCallbackHandler(database, paymobSvc)
+	callbackHandler      := handlers.NewPaymentCallbackHandler(database, paymobSvc, emailSvc)
 	adminDashHandler     := handlers.NewAdminDashboardHandler(database)
 	adminProductHandler  := handlers.NewAdminProductHandler(database)
 	adminOrderHandler     := handlers.NewAdminOrderHandler(database)
@@ -64,6 +74,9 @@ func main() {
 	adminSettingHandler   := handlers.NewAdminSettingHandler(database)
 	adminShippingHandler  := handlers.NewAdminShippingHandler(database)
 	adminAbandonedHandler := handlers.NewAdminAbandonedHandler(database)
+	reviewHandler         := handlers.NewReviewHandler(database)
+	wishlistHandler       := handlers.NewWishlistHandler(database)
+	savedSetHandler       := handlers.NewSavedSetHandler(database)
 
 	uploadHandler, err := handlers.NewUploadHandler(
 		cfg.CloudinaryCloudName,
@@ -82,15 +95,19 @@ func main() {
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login",    authHandler.Login)
 		auth.POST("/refresh",  authHandler.Refresh)
+		auth.POST("/forgot-password", authHandler.ForgotPassword)
+		auth.POST("/reset-password",  authHandler.ResetPassword)
 		auth.GET("/me", requireAuth, authHandler.Me)
 
-		api.GET("/products",        productHandler.List)
+		api.GET("/products",        productHandler.List) // supports ?search= for name matching
 		api.GET("/products/:slug",  productHandler.Get)
 		api.GET("/colors",          productHandler.Colors)
 		api.GET("/sets",            productHandler.ListSets)
 		api.GET("/shipping-fees",   productHandler.ListShippingFees)
 		api.GET("/size-guide",      productHandler.SizeGuide)
 		api.GET("/store-content",   productHandler.StoreContent)
+		api.GET("/products/:slug/reviews",  reviewHandler.List)
+		api.POST("/products/:slug/reviews", requireAuth, reviewHandler.Create)
 
 		cart := api.Group("/cart")
 		cart.Use(middleware.OptionalAuth(cfg.JWTSecret))
@@ -110,9 +127,19 @@ func main() {
 		api.GET("/orders",         requireAuth, checkoutHandler.ListOrders)
 		api.GET("/orders/:id",     requireAuth, checkoutHandler.GetOrder)
 		api.PUT("/auth/me",        requireAuth, authHandler.UpdateMe)
+		api.PUT("/auth/password",  requireAuth, authHandler.UpdatePassword)
 		api.GET("/addresses",      requireAuth, addressHandler.List)
 		api.POST("/addresses",     requireAuth, addressHandler.Create)
+		api.PUT("/addresses/:id",  requireAuth, addressHandler.Update)
 		api.DELETE("/addresses/:id", requireAuth, addressHandler.Delete)
+
+		api.GET("/wishlist",             requireAuth, wishlistHandler.List)
+		api.POST("/wishlist",            requireAuth, wishlistHandler.Add)
+		api.DELETE("/wishlist/:product_id", requireAuth, wishlistHandler.Remove)
+
+		api.GET("/saved-sets",     requireAuth, savedSetHandler.List)
+		api.POST("/saved-sets",    requireAuth, savedSetHandler.Create)
+		api.DELETE("/saved-sets/:id", requireAuth, savedSetHandler.Delete)
 
 		// Paymob callback — public, but HMAC-verified inside the handler
 		api.POST("/payments/paymob/callback", callbackHandler.PaymobCallback)
@@ -163,6 +190,8 @@ func main() {
 			admin.PUT("/shipping/:governorate",       adminShippingHandler.Update)
 
 			admin.POST("/upload",                     uploadHandler.Upload)
+
+			admin.DELETE("/reviews/:id",               reviewHandler.Delete)
 		}
 	}
 

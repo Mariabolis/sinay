@@ -5,8 +5,14 @@ import {
   type ShippingReturnsCopy,
 } from '../api/products'
 import { cartApi } from '../api/cart'
+import { reviewsApi, type Review } from '../api/reviews'
 import { useCartStore } from '../store/cartStore'
+import { useAuthStore } from '../store/authStore'
+import { useWishlistStore } from '../store/wishlistStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../lib/garmentPaths'
+import { getRecentlyViewed, trackRecentlyViewed, type RecentlyViewedItem } from '../lib/recentlyViewed'
+import RecentlyViewedGrid from '../components/RecentlyViewedGrid'
+import { SkeletonBlock } from '../components/Skeleton'
 
 // ── care icon SVGs (labels come from admin-editable settings — see CARE_ICON_LABEL_DEFAULTS) ──
 
@@ -216,6 +222,148 @@ function AccordionPanel({
   )
 }
 
+// ── Star rating ────────────────────────────────────────────────────────────────
+
+function StarRating({
+  value, size = 14, onChange,
+}: { value: number; size?: number; onChange?: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-0.5" role={onChange ? 'radiogroup' : undefined} aria-label="Rating">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button
+          key={n}
+          type="button"
+          disabled={!onChange}
+          onClick={() => onChange?.(n)}
+          aria-label={`${n} star${n === 1 ? '' : 's'}`}
+          className={onChange ? 'cursor-pointer' : 'cursor-default'}
+        >
+          <svg
+            width={size} height={size} viewBox="0 0 20 20"
+            fill={n <= Math.round(value) ? '#8B7568' : 'none'}
+            stroke="#8B7568" strokeWidth="1.2"
+          >
+            <path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9L10 15l-5.2 2.8 1-5.9L1.5 7.7l5.9-.8L10 1.5z" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Reviews section ──────────────────────────────────────────────────────────
+
+function ReviewsSection({ slug }: { slug: string }) {
+  const user = useAuthStore(s => s.user)
+
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [average, setAverage] = useState(0)
+  const [count,   setCount]   = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  const [rating,  setRating]  = useState(0)
+  const [comment, setComment] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  function load() {
+    setLoading(true)
+    reviewsApi.list(slug)
+      .then(res => { setReviews(res.reviews); setAverage(res.average); setCount(res.count) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSubmit() {
+    if (!rating || submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      await reviewsApi.create(slug, rating, comment.trim())
+      setRating(0)
+      setComment('')
+      load()
+    } catch {
+      setSubmitError('Could not submit your review — please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="border-t border-mocha/10">
+      <div className="max-w-[720px] mx-auto px-5 py-14">
+        <div className="mb-8 text-center">
+          <p className="text-[11px] tracking-[0.3em] uppercase text-mocha/60 mb-1">What people say</p>
+          <h2 className="font-logo text-ink mb-2" style={{ fontSize: 'clamp(24px, 4vw, 32px)' }}>Reviews</h2>
+          {count > 0 && (
+            <div className="flex items-center justify-center gap-2">
+              <StarRating value={average} />
+              <span className="text-[13px] text-ink/60">{average.toFixed(1)} · {count} review{count === 1 ? '' : 's'}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Submission form */}
+        {user ? (
+          <div className="bg-[#F9F5F0] rounded-2xl p-6 mb-10">
+            <p className="text-[13px] font-semibold text-ink mb-3">Leave a review</p>
+            <StarRating value={rating} size={22} onChange={setRating} />
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              placeholder="Tell us what you thought (optional)"
+              rows={3}
+              className="w-full mt-3 border border-mocha/20 bg-cream px-3 py-2.5 text-[13px] text-ink placeholder:text-mocha/35 focus:outline-none focus:border-mocha/50 transition-colors resize-none"
+            />
+            {submitError && <p className="text-[12px] text-red-500 mt-2">{submitError}</p>}
+            <button
+              onClick={handleSubmit}
+              disabled={!rating || submitting}
+              className="btn-pill-solid mt-3 px-6 py-2.5 text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Submitting…' : 'Submit review'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-center text-[13px] text-mocha/60 mb-10">
+            <Link to="/login" className="underline underline-offset-2 hover:text-mocha">Log in</Link> to leave a review.
+          </p>
+        )}
+
+        {/* List */}
+        {loading ? (
+          <div className="space-y-6">
+            {[0, 1].map(i => (
+              <div key={i} className="border-t border-mocha/10 pt-5 space-y-2">
+                <SkeletonBlock className="h-3.5 w-32" />
+                <SkeletonBlock className="h-3 w-full" />
+                <SkeletonBlock className="h-3 w-2/3" />
+              </div>
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <p className="text-center text-[13px] text-mocha/50">No reviews yet — be the first.</p>
+        ) : (
+          <div className="space-y-6">
+            {reviews.map(r => (
+              <div key={r.id} className="border-t border-mocha/10 pt-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[13px] font-semibold text-ink">{r.user_name}</span>
+                  <StarRating value={r.rating} />
+                </div>
+                {r.comment && <p className="text-[13px] text-ink/70 leading-relaxed">{r.comment}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ── Complete the Set card ──────────────────────────────────────────────────────
 
 function RelatedCard({ product }: { product: Product }) {
@@ -257,6 +405,8 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const setCart  = useCartStore(s => s.setCart)
+  const authUser = useAuthStore(s => s.user)
+  const { ids: wishlistIds, toggle: toggleWishlist, fetchWishlist, loaded: wishlistLoaded } = useWishlistStore()
 
   const [product,    setProduct]    = useState<Product | null>(null)
   const [loading,    setLoading]    = useState(true)
@@ -292,6 +442,12 @@ export default function ProductDetailPage() {
   }, [])
 
   useEffect(() => {
+    if (authUser && !wishlistLoaded) fetchWishlist()
+  }, [authUser, wishlistLoaded, fetchWishlist])
+
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([])
+
+  useEffect(() => {
     if (!slug) return
     setLoading(true)
     productsApi.get(slug)
@@ -301,10 +457,12 @@ export default function ProductDetailPage() {
         setActiveHex(first?.color_hex ?? '')
         setActiveSize(null)
         setMainImgIdx(0)
+        setRecentlyViewed(getRecentlyViewed(authUser?.id).filter(i => i.id !== p.id).slice(0, 3))
+        trackRecentlyViewed(authUser?.id, p)
       })
       .catch(() => navigate('/shop', { replace: true }))
       .finally(() => setLoading(false))
-  }, [slug, navigate])
+  }, [slug, navigate, authUser])
 
   // fetch related products once product type is known
   useEffect(() => {
@@ -401,8 +559,23 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="font-logo text-2xl text-mocha/40 animate-pulse">~</div>
+      <div className="max-w-[1120px] mx-auto px-5 py-8 grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-10 xl:gap-16">
+        <div className="flex flex-col gap-3">
+          <SkeletonBlock className="aspect-[3/4] w-full rounded-2xl" />
+          <div className="grid grid-cols-4 gap-2">
+            {[0, 1, 2, 3].map(i => <SkeletonBlock key={i} className="aspect-[3/4] w-full rounded-xl" />)}
+          </div>
+        </div>
+        <div className="space-y-4 pt-2">
+          <SkeletonBlock className="h-8 w-2/3" />
+          <SkeletonBlock className="h-5 w-1/4" />
+          <SkeletonBlock className="h-4 w-full mt-4" />
+          <SkeletonBlock className="h-4 w-5/6" />
+          <div className="flex gap-2 mt-4">
+            {[0, 1, 2].map(i => <SkeletonBlock key={i} className="w-9 h-9 rounded-full" />)}
+          </div>
+          <SkeletonBlock className="h-12 w-full rounded-full mt-6" />
+        </div>
       </div>
     )
   }
@@ -492,7 +665,7 @@ export default function ProductDetailPage() {
 
           {/* ── Product info ─────────────────────────────────────────────── */}
           <div>
-            {/* Name + style pill */}
+            {/* Name + style pill + wishlist */}
             <div className="flex items-start justify-between gap-3 mb-1">
               <h1
                 className="font-logo text-ink leading-tight"
@@ -500,9 +673,25 @@ export default function ProductDetailPage() {
               >
                 {product.name}
               </h1>
-              <span className="shrink-0 mt-1 text-[10px] tracking-[0.18em] uppercase bg-mocha/10 text-mocha rounded-full px-3 py-1">
-                {product.style.replace(/_/g, ' ')}
-              </span>
+              <div className="shrink-0 flex items-center gap-2 mt-1">
+                <span className="text-[10px] tracking-[0.18em] uppercase bg-mocha/10 text-mocha rounded-full px-3 py-1">
+                  {product.style.replace(/_/g, ' ')}
+                </span>
+                <button
+                  onClick={() => (authUser ? toggleWishlist(product) : navigate('/login'))}
+                  aria-label={wishlistIds.has(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
+                  aria-pressed={wishlistIds.has(product.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-mocha/10 transition-colors"
+                >
+                  <svg
+                    width="17" height="17" viewBox="0 0 24 24"
+                    fill={wishlistIds.has(product.id) ? '#EBCFD2' : 'none'}
+                    stroke="#8B7568" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Price */}
@@ -689,6 +878,8 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
+        <ReviewsSection slug={product.slug} />
+
         {/* ── Complete the Set ─────────────────────────────────────────────── */}
         {related.length > 0 && (
           <section className="border-t border-mocha/10 bg-[#F9F5F0]">
@@ -703,6 +894,25 @@ export default function ProductDetailPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 max-w-[700px] mx-auto">
                 {related.map(p => <RelatedCard key={p.id} product={p} />)}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Recently viewed ──────────────────────────────────────────────── */}
+        {recentlyViewed.length > 0 && (
+          <section className="border-t border-mocha/10">
+            <div className="max-w-[1120px] mx-auto px-5 py-14">
+              <div className="mb-8 text-center">
+                <p className="text-[11px] tracking-[0.3em] uppercase text-mocha/60 mb-1">
+                  Take another look
+                </p>
+                <h2 className="font-logo text-ink" style={{ fontSize: 'clamp(24px, 4vw, 32px)' }}>
+                  Recently Viewed
+                </h2>
+              </div>
+              <div className="max-w-[700px] mx-auto">
+                <RecentlyViewedGrid items={recentlyViewed} />
               </div>
             </div>
           </section>

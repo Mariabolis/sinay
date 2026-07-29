@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { productsApi, type Product } from '../../api/products'
 import { useReveal } from '../../lib/useReveal'
+import { SkeletonBlock } from '../Skeleton'
 
 export default function ProductPreviewGrid() {
   const [products, setProducts] = useState<Product[]>([])
+  const [loading,  setLoading]  = useState(true)
 
   const [headRef, headVisible] = useReveal<HTMLDivElement>()
   const [gridRef, gridVisible] = useReveal<HTMLDivElement>()
@@ -13,6 +15,7 @@ export default function ProductPreviewGrid() {
     productsApi.list({ per_page: 4 })
       .then(res => setProducts(res.products))
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   return (
@@ -37,6 +40,13 @@ export default function ProductPreviewGrid() {
           ref={gridRef}
           className={`stagger-grid grid grid-cols-2 md:grid-cols-4 gap-5 ${gridVisible ? 'is-visible' : ''}`}
         >
+          {loading && products.length === 0 && [0, 1, 2, 3].map(i => (
+            <div key={i}>
+              <SkeletonBlock className="h-[120px] w-full mb-3.5 rounded-xl" />
+              <SkeletonBlock className="h-3 w-3/4 mx-auto mb-2" />
+              <SkeletonBlock className="h-3 w-1/3 mx-auto" />
+            </div>
+          ))}
           {products.map(product => {
             const firstVariant = product.variants[0]
             const colorHex  = firstVariant?.color_hex  ?? '#EBCFD2'

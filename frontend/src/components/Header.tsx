@@ -158,7 +158,7 @@ export default function Header() {
                       </Link>
                     )}
                     <Link
-                      to="/orders"
+                      to="/account/orders"
                       onClick={() => setAccountOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ink hover:bg-mocha/10 transition-colors"
                     >
@@ -170,6 +170,13 @@ export default function Header() {
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ink hover:bg-mocha/10 transition-colors"
                     >
                       My Account
+                    </Link>
+                    <Link
+                      to="/wishlist"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ink hover:bg-mocha/10 transition-colors"
+                    >
+                      My Wishlist
                     </Link>
                     <button
                       onClick={() => { logout(); setAccountOpen(false) }}
@@ -246,11 +253,14 @@ export default function Header() {
                 {user.full_name && (
                   <p className="text-[12px] text-mocha/50">{user.full_name}</p>
                 )}
-                <Link to="/orders"  tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} className="text-[13px] text-ink font-medium">
+                <Link to="/account/orders"  tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} className="text-[13px] text-ink font-medium">
                   My Orders
                 </Link>
                 <Link to="/account" tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} className="text-[13px] text-ink font-medium">
                   My Account
+                </Link>
+                <Link to="/wishlist" tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} className="text-[13px] text-ink font-medium">
+                  My Wishlist
                 </Link>
                 {user.role === 'admin' && (
                   <Link to="/admin" tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} className="text-[13px] text-mocha font-semibold">

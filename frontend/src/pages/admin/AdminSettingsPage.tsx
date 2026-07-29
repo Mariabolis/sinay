@@ -278,6 +278,7 @@ function SizeGuideTable<T extends { size: string }>({
   const [draft,  setDraft]  = useState<T[]>(rows)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
+  const [error,  setError]  = useState('')
 
   useEffect(() => { setDraft(rows) }, [rows])
 
@@ -289,13 +290,14 @@ function SizeGuideTable<T extends { size: string }>({
 
   async function save() {
     setSaving(true)
+    setError('')
     try {
       await adminApi.updateSetting(settingKey, JSON.stringify(draft))
       onSaved(draft)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      alert('Failed to save size guide')
+      setError('Failed to save.')
     } finally {
       setSaving(false)
     }
@@ -303,20 +305,23 @@ function SizeGuideTable<T extends { size: string }>({
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="px-5 py-3 bg-[#F4EEE8] border-b border-[#ECE3D9] flex items-center justify-between">
+      <div className="px-5 py-3 bg-[#F4EEE8] border-b border-[#ECE3D9] flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold tracking-widest uppercase text-[#8B7568]">{title}</h2>
-        {saved ? (
-          <span className="text-xs text-emerald-600">✓ Saved</span>
-        ) : (
-          <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white
-                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
-          >
-            {saving ? '…' : 'Save'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {error && <span className="text-xs text-[#B3564B]">{error}</span>}
+          {saved ? (
+            <span className="text-xs text-emerald-600">✓ Saved</span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
+                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          )}
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[420px]">
@@ -362,6 +367,7 @@ function ProductStylesSettings() {
   const [loadError, setLoadError] = useState('')
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     adminApi.listSettings()
@@ -379,6 +385,7 @@ function ProductStylesSettings() {
 
   async function save() {
     setSaving(true)
+    setSaveError('')
     try {
       await adminApi.updateSetting('product_styles', JSON.stringify({ top, bottom }))
       setSavedTop(top)
@@ -386,7 +393,7 @@ function ProductStylesSettings() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      alert('Failed to save product styles')
+      setSaveError('Failed to save.')
     } finally {
       setSaving(false)
     }
@@ -403,18 +410,21 @@ function ProductStylesSettings() {
             Style options shown when creating a product and filtering the shop.
           </p>
         </div>
-        {saved ? (
-          <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
-        ) : (
-          <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
-                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
-          >
-            {saving ? '…' : 'Save'}
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {saveError && <span className="text-xs text-[#B3564B]">{saveError}</span>}
+          {saved ? (
+            <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
+                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          )}
+        </div>
       </div>
 
       <StyleGroup title="Tops" rows={top} onChange={setTop} />
@@ -428,6 +438,7 @@ function StyleGroup({
 }: { title: string; rows: ProductStyleOption[]; onChange: (rows: ProductStyleOption[]) => void }) {
   const [newKey,   setNewKey]   = useState('')
   const [newLabel, setNewLabel] = useState('')
+  const [addError, setAddError] = useState('')
 
   function updateLabel(key: string, label: string) {
     onChange(rows.map(r => (r.key === key ? { ...r, label } : r)))
@@ -441,7 +452,8 @@ function StyleGroup({
     const key = newKey.trim().toLowerCase().replace(/\s+/g, '_')
     const label = newLabel.trim()
     if (!key || !label) return
-    if (rows.some(r => r.key === key)) { alert(`"${key}" already exists`); return }
+    if (rows.some(r => r.key === key)) { setAddError(`"${key}" already exists`); return }
+    setAddError('')
     onChange([...rows, { key, label }])
     setNewKey('')
     setNewLabel('')
@@ -474,7 +486,7 @@ function StyleGroup({
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 px-5 py-3 bg-[#FAF7F4]">
+      <div className="flex flex-wrap items-center gap-2 px-5 py-3 bg-[#FAF7F4]">
         <input
           type="text"
           placeholder="key e.g. cropped"
@@ -488,7 +500,7 @@ function StyleGroup({
           placeholder="Label e.g. Cropped"
           value={newLabel}
           onChange={e => setNewLabel(e.target.value)}
-          className="flex-1 text-xs border-b border-[#d8cfc5] bg-transparent
+          className="flex-1 min-w-[120px] text-xs border-b border-[#d8cfc5] bg-transparent
                      focus:border-[#8B7568] focus:outline-none py-1"
         />
         <button
@@ -499,6 +511,7 @@ function StyleGroup({
         >
           Add
         </button>
+        {addError && <p className="w-full text-xs text-[#B3564B]">{addError}</p>}
       </div>
     </div>
   )
@@ -512,8 +525,10 @@ function StoreColorsSettings() {
   const [loadError, setLoadError] = useState('')
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [newHex,  setNewHex]  = useState('#EBCFD2')
   const [newName, setNewName] = useState('')
+  const [addError, setAddError] = useState('')
 
   useEffect(() => {
     adminApi.listSettings()
@@ -541,22 +556,24 @@ function StoreColorsSettings() {
     const name = newName.trim()
     if (!name) return
     if (colors.some(c => c.hex.toLowerCase() === newHex.toLowerCase())) {
-      alert('That color already exists')
+      setAddError('That color already exists')
       return
     }
+    setAddError('')
     setColors(cs => [...cs, { hex: newHex, name }])
     setNewName('')
   }
 
   async function save() {
     setSaving(true)
+    setSaveError('')
     try {
       await adminApi.updateSetting('store_colors', JSON.stringify(colors))
       setSavedColors(colors)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      alert('Failed to save brand colors')
+      setSaveError('Failed to save.')
     } finally {
       setSaving(false)
     }
@@ -573,18 +590,21 @@ function StoreColorsSettings() {
             The color palette used in the homepage "Build your own" set builder.
           </p>
         </div>
-        {saved ? (
-          <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
-        ) : (
-          <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
-                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
-          >
-            {saving ? '…' : 'Save'}
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {saveError && <span className="text-xs text-[#B3564B]">{saveError}</span>}
+          {saved ? (
+            <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
+                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -616,7 +636,7 @@ function StoreColorsSettings() {
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 px-5 py-3 bg-[#FAF7F4]">
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3 bg-[#FAF7F4]">
           <input
             type="color"
             value={newHex}
@@ -628,7 +648,7 @@ function StoreColorsSettings() {
             placeholder="Color name"
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            className="flex-1 text-xs border-b border-[#d8cfc5] bg-transparent
+            className="flex-1 min-w-[100px] text-xs border-b border-[#d8cfc5] bg-transparent
                        focus:border-[#8B7568] focus:outline-none py-1"
           />
           <button
@@ -639,6 +659,7 @@ function StoreColorsSettings() {
           >
             Add
           </button>
+          {addError && <p className="w-full text-xs text-[#B3564B]">{addError}</p>}
         </div>
       </div>
     </div>
@@ -655,6 +676,7 @@ function StorePoliciesSettings() {
   const [loadError, setLoadError] = useState('')
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     adminApi.listSettings()
@@ -675,6 +697,7 @@ function StorePoliciesSettings() {
 
   async function save() {
     setSaving(true)
+    setSaveError('')
     try {
       await Promise.all([
         adminApi.updateSetting('care_icon_labels', JSON.stringify(careLabels)),
@@ -685,7 +708,7 @@ function StorePoliciesSettings() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      alert('Failed to save store policies')
+      setSaveError('Failed to save.')
     } finally {
       setSaving(false)
     }
@@ -702,18 +725,21 @@ function StorePoliciesSettings() {
             Shipping, returns, and care-instruction copy shown on every product page.
           </p>
         </div>
-        {saved ? (
-          <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
-        ) : (
-          <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
-                       hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
-          >
-            {saving ? '…' : 'Save'}
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {saveError && <span className="text-xs text-[#B3564B]">{saveError}</span>}
+          {saved ? (
+            <span className="text-xs text-emerald-600 shrink-0">✓ Saved</span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="text-xs px-3 py-1 rounded-lg bg-[#8B7568] text-white shrink-0
+                         hover:bg-[#7a6659] disabled:opacity-30 disabled:cursor-default transition-colors"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
@@ -726,7 +752,7 @@ function StorePoliciesSettings() {
 
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
         <h2 className="text-xs font-semibold tracking-widest uppercase text-[#8B7568]">Care Instructions</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {careLabels.map((label, i) => (
             <div key={i}>
               <label className="block text-[11px] text-[#b0a89f] mb-1">{CARE_ICON_HINTS[i] ?? `Icon ${i + 1}`}</label>
@@ -784,26 +810,28 @@ function ZoneRow({ governorate, fee: initialFee, onSave }: ZoneRowProps) {
   const [value,  setValue]  = useState(String(initialFee))
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
+  const [error,  setError]  = useState('')
 
   const dirty = value !== String(initialFee) && value !== ''
 
   const save = async () => {
     const num = parseFloat(value)
-    if (isNaN(num) || num < 0) { alert('Enter a valid fee'); return }
+    if (isNaN(num) || num < 0) { setError('Enter a valid fee'); return }
     setSaving(true)
+    setError('')
     try {
       await onSave(governorate, num)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      alert('Failed to save')
+      setError('Failed to save.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="flex items-center gap-4 px-5 py-3">
+    <div className="flex items-center gap-4 px-5 py-3 flex-wrap">
       <span className="flex-1 text-sm text-[#4A3F38]">{governorate}</span>
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-[#8B7568]">EGP</span>
@@ -817,6 +845,7 @@ function ZoneRow({ governorate, fee: initialFee, onSave }: ZoneRowProps) {
           onChange={e => setValue(e.target.value)}
         />
       </div>
+      {error && <span className="text-xs text-[#B3564B] w-full text-right">{error}</span>}
       <div className="w-16 text-right">
         {saved ? (
           <span className="text-xs text-emerald-600">✓ Saved</span>

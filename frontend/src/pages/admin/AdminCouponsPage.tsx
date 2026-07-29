@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AdminCoupon, AdminProduct, CouponInput, DiscountCategory } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import InlineError from '../../components/InlineError'
+import { SkeletonRows } from '../../components/Skeleton'
 
 const STATUS_BADGE: Record<string, string> = {
   'Active':   'bg-emerald-50 text-emerald-700',
@@ -174,7 +176,7 @@ function CouponModal({ coupon, onClose, onSaved }: { coupon: AdminCoupon | null;
           {!isEdit ? (
             <div>
               <p className="text-[11px] font-semibold text-[#8B7568] uppercase tracking-wide mb-2">Discount type</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {CATEGORIES.map(cat => (
                   <button key={cat.id} type="button" onClick={() => setCategory(cat.id)}
                     className={`text-left p-3 rounded-xl border transition-all ${category === cat.id ? 'border-[#8B7568] bg-[#FAF7F4] ring-1 ring-[#8B7568]' : 'border-[#d8cfc5] hover:border-[#8B7568]/50'}`}>
@@ -208,7 +210,7 @@ function CouponModal({ coupon, onClose, onSaved }: { coupon: AdminCoupon | null;
           </div>
 
           {(category === 'order' || category === 'product') && (<>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F label="Type">
                 <select value={type} onChange={e => setType(e.target.value as 'percent' | 'fixed')} className="input-field">
                   <option value="percent">Percent (%)</option>
@@ -224,7 +226,7 @@ function CouponModal({ coupon, onClose, onSaved }: { coupon: AdminCoupon | null;
             {category === 'product' && (
               <ProductSelect label="Apply to — empty = all products" selected={appliesTo} onChange={setAppliesTo} />
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F label="Min Order (EGP)">
                 <input type="number" min={0} step="0.01" value={minOrder} onChange={e => setMinOrder(e.target.value)} placeholder="Optional" className="input-field" />
               </F>
@@ -258,7 +260,7 @@ function CouponModal({ coupon, onClose, onSaved }: { coupon: AdminCoupon | null;
                 <input type="number" min={1} max={100} value={getPct} onChange={e => setGetPct(e.target.value)} className="input-field w-20" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F label="Expiry Date">
                 <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)} className="input-field" />
               </F>
@@ -269,7 +271,7 @@ function CouponModal({ coupon, onClose, onSaved }: { coupon: AdminCoupon | null;
           </>)}
 
           {category === 'shipping' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F label="Min Order (EGP)">
                 <input type="number" min={0} step="0.01" value={minOrder} onChange={e => setMinOrder(e.target.value)} placeholder="Optional" className="input-field" />
               </F>
@@ -303,6 +305,7 @@ export default function AdminCouponsPage() {
   const [modal,    setModal]    = useState<'create' | AdminCoupon | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [listErr,  setListErr]  = useState('')
 
   const load = useCallback(() => {
     setLoading(true); setError('')
@@ -315,14 +318,16 @@ export default function AdminCouponsPage() {
 
   async function handleToggle(id: string) {
     setToggling(id)
+    setListErr('')
     try { const u = await adminApi.toggleCoupon(id); setCoupons(cs => cs.map(c => c.id === id ? u : c)) }
-    catch { alert('Failed to toggle coupon') } finally { setToggling(null) }
+    catch { setListErr('Failed to toggle coupon.') } finally { setToggling(null) }
   }
   async function handleDelete(id: string) {
     if (!confirm('Delete this coupon? This cannot be undone.')) return
     setDeleting(id)
+    setListErr('')
     try { await adminApi.deleteCoupon(id); setCoupons(cs => cs.filter(c => c.id !== id)); setTotal(t => t - 1) }
-    catch { alert('Failed to delete coupon') } finally { setDeleting(null) }
+    catch { setListErr('Failed to delete coupon.') } finally { setDeleting(null) }
   }
   function handleSaved(updated: AdminCoupon) {
     setCoupons(prev => {
@@ -346,8 +351,12 @@ export default function AdminCouponsPage() {
         </button>
       </div>
 
-      {error ? <p className="text-red-500 text-sm">{error}</p>
-      : loading ? <p className="text-[#8B7568] text-sm">Loading…</p>
+      {listErr && (
+        <p className="text-sm text-[#B3564B] bg-[#B3564B]/8 rounded-lg px-4 py-2.5">{listErr}</p>
+      )}
+
+      {error ? <InlineError message={error} onRetry={load} />
+      : loading ? <SkeletonRows count={5} rowClassName="h-12" />
       : coupons.length === 0 ? <p className="text-[#8B7568] text-sm">No coupon codes yet.</p>
       : (
         <div className="bg-white rounded-xl shadow-sm overflow-x-auto">

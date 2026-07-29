@@ -32,6 +32,15 @@ type Config struct {
 	CloudinaryCloudName string
 	CloudinaryAPIKey    string
 	CloudinaryAPISecret string
+	// Email — SMTP takes priority over Resend if set; neither set means
+	// "log instead of send" (dev-safe no-op)
+	ResendAPIKey string
+	EmailFrom    string
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUser     string
+	SMTPPassword string
+	FrontendURL  string
 }
 
 func Load() *Config {
@@ -61,6 +70,13 @@ func Load() *Config {
 		CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
 		CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
 		CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
+		ResendAPIKey:        getEnv("RESEND_API_KEY", ""),
+		EmailFrom:           getEnv("EMAIL_FROM", "SINAY <onboarding@resend.dev>"),
+		SMTPHost:            getEnv("SMTP_HOST", ""),
+		SMTPPort:            getEnv("SMTP_PORT", "587"),
+		SMTPUser:            getEnv("SMTP_USER", ""),
+		SMTPPassword:        getEnv("SMTP_PASSWORD", ""),
+		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:5174"),
 	}
 }
 

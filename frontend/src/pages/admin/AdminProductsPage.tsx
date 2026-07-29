@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { AdminProduct } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonRows } from '../../components/Skeleton'
 
 const STYLE_LABELS: Record<string, string> = {
   classic_short_sleeve: 'Classic Short Sleeve',
@@ -108,7 +109,7 @@ export default function AdminProductsPage() {
       {error ? (
         <p className="text-red-500 text-sm">{error}</p>
       ) : loading ? (
-        <p className="text-[#8B7568] text-sm">Loading…</p>
+        <SkeletonRows count={5} rowClassName="h-12" />
       ) : products.length === 0 ? (
         <p className="text-[#8B7568] text-sm">No products found.</p>
       ) : (

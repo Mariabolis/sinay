@@ -113,14 +113,17 @@ func toProductResp(p models.Product) productResp {
 	return pr
 }
 
-// buildBaseQuery applies type/style/color/size filters to a base product query.
-func (h *ProductHandler) buildBaseQuery(productType, style, color, size string) *gorm.DB {
+// buildBaseQuery applies type/style/color/size/search filters to a base product query.
+func (h *ProductHandler) buildBaseQuery(productType, style, color, size, search string) *gorm.DB {
 	q := h.db.Model(&models.Product{}).Where("is_active = ?", true)
 	if productType != "" {
 		q = q.Where("type = ?", productType)
 	}
 	if style != "" {
 		q = q.Where("style = ?", style)
+	}
+	if search != "" {
+		q = q.Where("name ILIKE ?", "%"+search+"%")
 	}
 	if color != "" || size != "" {
 		varQ := h.db.Model(&models.ProductVariant{})
@@ -164,6 +167,7 @@ func (h *ProductHandler) List(c *gin.Context) {
 	style       := c.Query("style")
 	color       := c.Query("color")
 	size        := c.Query("size")
+	search      := strings.TrimSpace(c.Query("search"))
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -175,13 +179,13 @@ func (h *ProductHandler) List(c *gin.Context) {
 	}
 
 	var total int64
-	if err := h.buildBaseQuery(productType, style, color, size).Count(&total).Error; err != nil {
+	if err := h.buildBaseQuery(productType, style, color, size, search).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
 	}
 
 	var products []models.Product
-	if err := h.buildBaseQuery(productType, style, color, size).
+	if err := h.buildBaseQuery(productType, style, color, size, search).
 		Preload("Variants", variantPreload(color, size)).
 		Order("created_at ASC").
 		Offset((page - 1) * perPage).

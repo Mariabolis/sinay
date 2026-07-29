@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import { checkoutApi, type Address, type AddressInput } from '../api/checkout'
 import { shippingApi } from '../api/products'
+import { SkeletonBlock } from '../components/Skeleton'
 
 const GOVERNORATES = [
   'Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Red Sea', 'Beheira',
@@ -102,7 +103,23 @@ export default function CheckoutPage() {
     }
   }
 
-  if (!user || !cart) return null
+  if (!user) return null
+
+  if (!cart) {
+    return (
+      <main className="max-w-[1080px] mx-auto px-6 py-12">
+        <SkeletonBlock className="h-9 w-40 mb-10" />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 items-start">
+          <div className="lg:col-span-3 space-y-4">
+            <SkeletonBlock className="h-4 w-36" />
+            <SkeletonBlock className="h-24 w-full rounded-[14px]" />
+            <SkeletonBlock className="h-24 w-full rounded-[14px]" />
+          </div>
+          <SkeletonBlock className="lg:col-span-2 h-[420px] w-full rounded-[18px]" />
+        </div>
+      </main>
+    )
+  }
 
   const subtotal = cart.subtotal
   const discount = cart.discount
@@ -115,12 +132,12 @@ export default function CheckoutPage() {
   const total = subtotal - discount + (shippingFee ?? 0)
 
   return (
-    <main className="max-w-[1080px] mx-auto px-6 py-12">
+    <main className="max-w-[1080px] mx-auto px-6 py-12 pb-28 sm:pb-12">
       <h1 className="font-logo text-ink mb-10" style={{ fontSize: 'clamp(26px,5vw,36px)' }}>
         Checkout
       </h1>
 
-      <form onSubmit={handleSubmit}>
+      <form id="checkout-form" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 items-start">
 
           {/* ── address column ─────────────────────────────────────────────── */}
@@ -321,7 +338,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={submitting || (!selectedAddrId && (!showNewForm || !isFormValid()))}
-                className="btn-pill-solid w-full mt-5 flex justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                className="hidden sm:flex btn-pill-solid w-full mt-5 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting
                   ? (paymentMethod === 'cod' ? 'Placing order…' : 'Redirecting to payment…')
@@ -347,6 +364,28 @@ export default function CheckoutPage() {
 
         </div>
       </form>
+
+      {/* ── Sticky mobile place-order bar ─────────────────────────────────── */}
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-cream/90 border-t border-mocha/15 px-4 py-3 flex items-center gap-3"
+           style={{ backdropFilter: 'blur(8px)' }}>
+        <div className="flex-1">
+          <p className="text-[11px] text-mocha/60 uppercase tracking-[0.1em] leading-none">Total</p>
+          <p className="font-logo text-[18px] text-ink mt-0.5">
+            {shippingFee !== null ? `EGP ${total.toFixed(0)}` : '—'}
+          </p>
+        </div>
+        <button
+          type="submit"
+          form="checkout-form"
+          disabled={submitting || (!selectedAddrId && (!showNewForm || !isFormValid()))}
+          className="btn-pill-solid px-6 py-3 text-[13px] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {submitting
+            ? '…'
+            : (paymentMethod === 'cod' ? 'Place Order' : 'Pay now')
+          }
+        </button>
+      </div>
     </main>
   )
 }

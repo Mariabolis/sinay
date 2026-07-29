@@ -1,12 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { productsApi, type ShippingReturnsCopy } from '../api/products'
+import { SkeletonText } from '../components/Skeleton'
+import InlineError from '../components/InlineError'
 
 export default function ShippingReturnsPage() {
-  const [copy, setCopy] = useState<ShippingReturnsCopy | null>(null)
+  const [copy,    setCopy]    = useState<ShippingReturnsCopy | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(false)
 
-  useEffect(() => {
-    productsApi.storeContent().then(res => setCopy(res.shipping_returns_copy)).catch(() => {})
+  const load = useCallback(() => {
+    setLoading(true)
+    setError(false)
+    productsApi.storeContent()
+      .then(res => setCopy(res.shipping_returns_copy))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   return (
     <div className="max-w-[600px] mx-auto px-5 py-14 font-body">
@@ -15,7 +26,14 @@ export default function ShippingReturnsPage() {
         <h1 className="font-logo text-[32px] text-ink">Shipping & Returns</h1>
       </div>
 
-      {copy && (
+      {loading ? (
+        <div className="space-y-8">
+          <SkeletonText lines={3} />
+          <SkeletonText lines={2} />
+        </div>
+      ) : error ? (
+        <InlineError message="We couldn't load this page." onRetry={load} />
+      ) : copy && (
         <div className="space-y-8">
           <section>
             <h2 className="text-[13px] font-semibold tracking-[0.08em] uppercase text-mocha/70 mb-3">Shipping</h2>

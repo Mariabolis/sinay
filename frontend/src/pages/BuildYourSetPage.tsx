@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { productsApi, type Product, type ProductVariant } from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
+import { useAuthStore } from '../store/authStore'
+import { useSavedSetsStore } from '../store/savedSetsStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../lib/garmentPaths'
+import { SkeletonBlock } from '../components/Skeleton'
+import InlineError from '../components/InlineError'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -118,6 +122,20 @@ function ModelCard({
       <p className="text-[12.5px] font-semibold text-ink truncate leading-snug">{product.name}</p>
       <p className="text-[11px] text-mocha/65 mt-0.5">from EGP {product.base_price.toFixed(0)}</p>
     </button>
+  )
+}
+
+function StyleRowSkeleton() {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
+      {[0, 1, 2, 3].map(i => (
+        <div key={i} className="flex-none w-[136px]">
+          <SkeletonBlock className="aspect-[3/4] w-full mb-2.5" />
+          <SkeletonBlock className="h-3 w-4/5 mb-1.5" />
+          <SkeletonBlock className="h-2.5 w-1/2" />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -271,6 +289,9 @@ function SetPreviewSvg({
 
 export default function BuildYourSetPage() {
   const setCart = useCartStore(s => s.setCart)
+  const authUser = useAuthStore(s => s.user)
+  const navigate = useNavigate()
+  const { save: saveSet, remove: removeSavedSet, sets: savedSets, fetchSavedSets, loaded: savedSetsLoaded } = useSavedSetsStore()
 
   const [tops,    setTops]    = useState<Product[]>([])
   const [bottoms, setBottoms] = useState<Product[]>([])
@@ -287,6 +308,8 @@ export default function BuildYourSetPage() {
   const [adding,   setAdding]   = useState(false)
   const [added,    setAdded]    = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [loadingStyles, setLoadingStyles] = useState(true)
 
   const topDetailRef = useRef<HTMLDivElement>(null)
   const botDetailRef = useRef<HTMLDivElement>(null)
@@ -298,15 +321,24 @@ export default function BuildYourSetPage() {
     window.scrollTo({ top, behavior: 'smooth' })
   }
 
-  useEffect(() => {
+  function loadStyles() {
+    setLoadingStyles(true)
+    setLoadError(false)
     Promise.all([
       productsApi.list({ type: 'top',    per_page: 20 }),
       productsApi.list({ type: 'bottom', per_page: 20 }),
     ]).then(([tRes, bRes]) => {
       setTops(tRes.products)
       setBottoms(bRes.products)
-    }).catch(() => {})
+    }).catch(() => {
+      setLoadError(true)
+    }).finally(() => setLoadingStyles(false))
     productsApi.sizeGuide().then(res => setSizeOrder(res.sizes)).catch(() => {})
+  }
+
+  useEffect(() => {
+    loadStyles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // scroll to detail panel after React renders it
@@ -362,6 +394,21 @@ export default function BuildYourSetPage() {
 
   const canAdd = !!topVariant && !!botVariant
 
+  useEffect(() => {
+    if (authUser && !savedSetsLoaded) fetchSavedSets()
+  }, [authUser, savedSetsLoaded, fetchSavedSets])
+
+  const currentSaved = topVariant && botVariant
+    ? savedSets.find(s => s.top.id === topVariant.id && s.bottom.id === botVariant.id)
+    : undefined
+
+  async function handleToggleSave() {
+    if (!authUser) { navigate('/login'); return }
+    if (!topVariant || !botVariant) return
+    if (currentSaved) await removeSavedSet(currentSaved.id)
+    else await saveSet(topVariant.id, botVariant.id)
+  }
+
   async function handleAddSet() {
     if (!topVariant || !botVariant || adding) return
     setAdding(true)
@@ -413,8 +460,12 @@ export default function BuildYourSetPage() {
             subtitle={tops.length > 0 ? `${tops.length} styles available — scroll to browse` : undefined}
           />
 
-          {tops.length === 0 ? (
-            <p className="text-[13px] text-mocha/50 animate-pulse">Loading styles…</p>
+          {loadError ? (
+            <InlineError message="We couldn't load top styles." onRetry={loadStyles} />
+          ) : loadingStyles ? (
+            <StyleRowSkeleton />
+          ) : tops.length === 0 ? (
+            <p className="text-[13px] text-mocha/50">No tops available right now.</p>
           ) : (
             <>
               {/* horizontal scrollable model row */}
@@ -463,8 +514,12 @@ export default function BuildYourSetPage() {
             subtitle={bottoms.length > 0 ? `${bottoms.length} styles available — scroll to browse` : undefined}
           />
 
-          {bottoms.length === 0 ? (
-            <p className="text-[13px] text-mocha/50 animate-pulse">Loading styles…</p>
+          {loadError ? (
+            <InlineError message="We couldn't load bottom styles." onRetry={loadStyles} />
+          ) : loadingStyles ? (
+            <StyleRowSkeleton />
+          ) : bottoms.length === 0 ? (
+            <p className="text-[13px] text-mocha/50">No bottoms available right now.</p>
           ) : (
             <>
               <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory">
@@ -544,6 +599,22 @@ export default function BuildYourSetPage() {
 
           {/* price + CTA */}
           <div className="flex items-center gap-3 shrink-0">
+            {canAdd && (
+              <button
+                onClick={handleToggleSave}
+                aria-label={currentSaved ? 'Remove saved set' : 'Save this set'}
+                aria-pressed={!!currentSaved}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-mocha/10 transition-colors shrink-0"
+              >
+                <svg
+                  width="17" height="17" viewBox="0 0 24 24"
+                  fill={currentSaved ? '#EBCFD2' : 'none'}
+                  stroke="#8B7568" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+                </svg>
+              </button>
+            )}
             {(topProduct || botProduct) && total > 0 && (
               <p className="font-logo text-[18px] text-ink hidden sm:block">
                 EGP {total.toFixed(0)}

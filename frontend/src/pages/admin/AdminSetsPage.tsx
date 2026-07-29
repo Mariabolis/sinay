@@ -23,6 +23,7 @@ export default function AdminSetsPage() {
   const [sets,     setSets]     = useState<AdminReadySet[]>([])
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [error,    setError]    = useState('')
+  const [listErr,  setListErr]  = useState('')
 
   // form
   const [name,      setName]      = useState('')
@@ -73,25 +74,28 @@ export default function AdminSetsPage() {
   const handlePriceSave = async (id: string, val: string) => {
     const p = parseFloat(val)
     if (isNaN(p)) return
+    setListErr('')
     try {
       const updated = await adminApi.updateSet(id, { price: p })
       setSets(s => s.map(x => (x.id === id ? updated : x)))
-    } catch { alert('Failed to update price') }
+    } catch { setListErr('Failed to update price.') }
   }
 
   const handleToggle = async (id: string, current: boolean) => {
+    setListErr('')
     try {
       const updated = await adminApi.updateSet(id, { is_active: !current })
       setSets(s => s.map(x => (x.id === id ? updated : x)))
-    } catch { alert('Failed to toggle set') }
+    } catch { setListErr('Failed to toggle set.') }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this set?')) return
+    setListErr('')
     try {
       await adminApi.deleteSet(id)
       setSets(s => s.filter(x => x.id !== id))
-    } catch { alert('Failed to delete set') }
+    } catch { setListErr('Failed to delete set.') }
   }
 
   if (error) return <p className="text-red-500">{error}</p>
@@ -122,7 +126,7 @@ export default function AdminSetsPage() {
 
         <p className="text-xs text-[#8B7568]">Top and bottom can have different colors.</p>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* ── Top ── */}
           <div className="space-y-3">
             <SLabel>Top — Product</SLabel>
@@ -242,8 +246,11 @@ export default function AdminSetsPage() {
       </form>
 
       {/* Sets list */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      {listErr && (
+        <p className="text-sm text-[#B3564B] bg-[#B3564B]/8 rounded-lg px-4 py-2.5">{listErr}</p>
+      )}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-[#ECE3D9] text-[#4A3F38]">
             <tr>
               <th className="text-left px-4 py-3">Name</th>

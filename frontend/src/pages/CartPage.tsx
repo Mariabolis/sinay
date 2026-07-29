@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom'
 import { cartApi, type CartItem } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
 import { TOP_PATHS, BOTTOM_PATHS } from '../lib/garmentPaths'
+import { SkeletonBlock } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import InlineError from '../components/InlineError'
 
 export default function CartPage() {
-  const { cart, loading, fetchCart, setCart } = useCartStore()
+  const { cart, loading, error, fetchCart, setCart } = useCartStore()
   const [couponInput,    setCouponInput]    = useState('')
   const [couponError,    setCouponError]    = useState<string | null>(null)
   const [applyingCoupon, setApplyingCoupon] = useState(false)
+  const [actionError,    setActionError]    = useState<string | null>(null)
 
   useEffect(() => {
     fetchCart()
@@ -34,12 +38,14 @@ export default function CartPage() {
   }, [cart])
 
   async function handleRemove(itemId: string) {
-    try { setCart(await cartApi.removeItem(itemId)) } catch {}
+    try { setCart(await cartApi.removeItem(itemId)); setActionError(null) }
+    catch { setActionError("Couldn't remove that item. Please try again.") }
   }
 
   async function handleQty(itemId: string, qty: number) {
     if (qty < 1) { await handleRemove(itemId); return }
-    try { setCart(await cartApi.updateItem(itemId, qty)) } catch {}
+    try { setCart(await cartApi.updateItem(itemId, qty)); setActionError(null) }
+    catch { setActionError("Couldn't update quantity. Please try again.") }
   }
 
   async function handleApplyCoupon() {
@@ -64,25 +70,46 @@ export default function CartPage() {
 
   if (loading && !cart) {
     return (
-      <div className="py-32 text-center text-mocha/60 tracking-wide text-sm">
-        Loading your bag…
-      </div>
+      <main className="max-w-[1080px] mx-auto px-6 py-12">
+        <SkeletonBlock className="h-9 w-40 mb-10" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="lg:col-span-2 space-y-4">
+            {[0, 1].map(i => (
+              <div key={i} className="bg-white rounded-[18px] p-5 flex gap-5">
+                <SkeletonBlock className="w-[64px] h-[80px] shrink-0" />
+                <div className="flex-1 space-y-2.5 pt-1">
+                  <SkeletonBlock className="h-3.5 w-1/2" />
+                  <SkeletonBlock className="h-3 w-1/3" />
+                  <SkeletonBlock className="h-4 w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <SkeletonBlock className="h-[260px] w-full rounded-[18px]" />
+        </div>
+      </main>
     )
+  }
+
+  if (error && !cart) {
+    return <InlineError message="We couldn't load your bag." onRetry={fetchCart} className="py-32" />
   }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="py-32 text-center px-6">
-        <p className="font-logo text-ink mb-6" style={{ fontSize: 'clamp(26px,5vw,36px)' }}>
-          Your bag is empty
-        </p>
-        <Link to="/shop" className="btn-pill-solid">Shop the collection</Link>
-      </div>
+      <EmptyState
+        message="Your bag is empty"
+        subtext="Fill it with something soft and yours."
+        ctaLabel="Shop the collection"
+        ctaTo="/shop"
+        className="py-32"
+        heading
+      />
     )
   }
 
   return (
-    <main className="max-w-[1080px] mx-auto px-6 py-12">
+    <main className="max-w-[1080px] mx-auto px-6 py-12 pb-28 sm:pb-12">
       <h1 className="font-logo text-ink mb-10" style={{ fontSize: 'clamp(26px,5vw,36px)' }}>
         Your bag
       </h1>
@@ -91,6 +118,9 @@ export default function CartPage() {
 
         {/* ── item list ─────────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
+          {actionError && (
+            <p className="text-[12.5px] text-[#B3564B] bg-[#B3564B]/8 rounded-xl px-4 py-2.5">{actionError}</p>
+          )}
           {setGroups.map(group => (
             <SetGroupCard
               key={group[0].set_id!}
@@ -169,11 +199,23 @@ export default function CartPage() {
               </div>
             </div>
 
-            <Link to="/checkout" className="btn-pill-solid w-full mt-5 flex justify-center">
+            <Link to="/checkout" className="hidden sm:flex btn-pill-solid w-full mt-5 justify-center">
               Proceed to checkout
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* ── Sticky mobile checkout bar ────────────────────────────────────── */}
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-cream/90 border-t border-mocha/15 px-4 py-3 flex items-center gap-3"
+           style={{ backdropFilter: 'blur(8px)' }}>
+        <div className="flex-1">
+          <p className="text-[11px] text-mocha/60 uppercase tracking-[0.1em] leading-none">Total</p>
+          <p className="font-logo text-[18px] text-ink mt-0.5">EGP {cart.total.toFixed(0)}</p>
+        </div>
+        <Link to="/checkout" className="btn-pill-solid px-6 py-3 text-[13px] shrink-0">
+          Proceed to checkout
+        </Link>
       </div>
     </main>
   )

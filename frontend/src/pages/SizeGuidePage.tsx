@@ -1,15 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { productsApi, type SizeGuideTopRow, type SizeGuideBottomRow } from '../api/products'
+import { SkeletonBlock } from '../components/Skeleton'
+import InlineError from '../components/InlineError'
 
 export default function SizeGuidePage() {
   const [tops,    setTops]    = useState<SizeGuideTopRow[]>([])
   const [bottoms, setBottoms] = useState<SizeGuideBottomRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true)
+    setError(false)
     productsApi.sizeGuide()
       .then(res => { setTops(res.tops); setBottoms(res.bottoms) })
-      .catch(() => {})
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   return (
     <div className="max-w-[680px] mx-auto px-5 py-14 font-body">
@@ -19,10 +28,19 @@ export default function SizeGuidePage() {
         <p className="text-[13px] text-mocha/60">All measurements in centimeters. Measure your body, not your garment.</p>
       </div>
 
+      {loading ? (
+        <div className="space-y-10">
+          <SkeletonBlock className="h-40 w-full" />
+          <SkeletonBlock className="h-40 w-full" />
+        </div>
+      ) : error ? (
+        <InlineError message="We couldn't load the size guide." onRetry={load} />
+      ) : (
       <div className="space-y-10">
         <div>
           <h2 className="font-logo text-xl text-ink mb-4">Tops</h2>
-          <table className="w-full text-[13px] font-body border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full text-[13px] font-body border-collapse min-w-[360px]">
             <thead>
               <tr className="border-b border-mocha/15">
                 <th className="text-left py-2 pr-4 text-mocha/50 font-semibold text-[11px] tracking-[0.08em] uppercase">Size</th>
@@ -42,11 +60,13 @@ export default function SizeGuidePage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         <div>
           <h2 className="font-logo text-xl text-ink mb-4">Bottoms</h2>
-          <table className="w-full text-[13px] font-body border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full text-[13px] font-body border-collapse min-w-[360px]">
             <thead>
               <tr className="border-b border-mocha/15">
                 <th className="text-left py-2 pr-4 text-mocha/50 font-semibold text-[11px] tracking-[0.08em] uppercase">Size</th>
@@ -66,12 +86,14 @@ export default function SizeGuidePage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         <p className="text-[12px] text-mocha/50 leading-relaxed text-center">
           Between sizes? We recommend sizing up for a relaxed, lounge-friendly fit.
         </p>
       </div>
+      )}
     </div>
   )
 }

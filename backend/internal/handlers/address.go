@@ -99,6 +99,52 @@ func (h *AddressHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, addrToResp(addr))
 }
 
+// PUT /api/addresses/:id
+func (h *AddressHandler) Update(c *gin.Context) {
+	user := c.MustGet("user").(models.User)
+	var addr models.Address
+	if h.db.Where("id = ? AND user_id = ?", c.Param("id"), user.ID).First(&addr).Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "address not found"})
+		return
+	}
+
+	var req struct {
+		Label       string `json:"label"`
+		FullName    string `json:"full_name"  binding:"required"`
+		Phone       string `json:"phone"       binding:"required"`
+		Governorate string `json:"governorate" binding:"required"`
+		City        string `json:"city"        binding:"required"`
+		Street      string `json:"street"      binding:"required"`
+		Building    string `json:"building"`
+		Notes       string `json:"notes"`
+		IsDefault   bool   `json:"is_default"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.IsDefault && !addr.IsDefault {
+		h.db.Model(&models.Address{}).
+			Where("user_id = ?", user.ID).
+			Update("is_default", false)
+	}
+
+	h.db.Model(&addr).Updates(map[string]any{
+		"label":       nullableStr(req.Label),
+		"full_name":   nullableStr(req.FullName),
+		"phone":       nullableStr(req.Phone),
+		"governorate": nullableStr(req.Governorate),
+		"city":        nullableStr(req.City),
+		"street":      nullableStr(req.Street),
+		"building":    nullableStr(req.Building),
+		"notes":       nullableStr(req.Notes),
+		"is_default":  req.IsDefault,
+	})
+	h.db.First(&addr, "id = ?", addr.ID)
+	c.JSON(http.StatusOK, addrToResp(addr))
+}
+
 // DELETE /api/addresses/:id
 func (h *AddressHandler) Delete(c *gin.Context) {
 	user := c.MustGet("user").(models.User)

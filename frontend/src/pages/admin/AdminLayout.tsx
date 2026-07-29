@@ -21,10 +21,10 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F4EEE8]">
-      {/* Sidebar */}
-      <aside className="w-52 shrink-0 bg-[#ECE3D9] border-r border-[#d8cfc5] flex flex-col">
-        <div className="px-5 py-5 border-b border-[#d8cfc5] space-y-3">
+    <div className="min-h-screen md:flex bg-[#F4EEE8]">
+      {/* Sidebar (desktop) / top bar + horizontal tabs (mobile) */}
+      <aside className="md:w-52 md:shrink-0 bg-[#ECE3D9] border-b md:border-b-0 md:border-r border-[#d8cfc5] flex flex-col">
+        <div className="px-5 py-4 md:py-5 border-b border-[#d8cfc5] flex items-center justify-between md:block md:space-y-3">
           <span className="font-semibold text-[#4A3F38] tracking-wide text-sm uppercase block">
             Sinay Admin
           </span>
@@ -35,13 +35,13 @@ export default function AdminLayout() {
             ← Back to site
           </Link>
         </div>
-        <nav className="flex-1 py-4 space-y-1 px-3">
+        <nav className="flex md:flex-col gap-1 md:gap-1 md:flex-1 py-2.5 md:py-4 px-3 overflow-x-auto md:overflow-visible">
           {links.map(l => (
             <NavLink
               key={l.to}
               to={l.to}
               className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                `px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 md:shrink md:block ${
                   isActive
                     ? 'bg-[#8B7568] text-white'
                     : 'text-[#4A3F38] hover:bg-[#d8cfc5]'
@@ -55,7 +55,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto p-8">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
         <Outlet />
       </main>
     </div>

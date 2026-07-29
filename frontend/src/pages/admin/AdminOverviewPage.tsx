@@ -1,26 +1,41 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { DashboardSummary } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonBlock } from '../../components/Skeleton'
+import InlineError from '../../components/InlineError'
 
 export default function AdminOverviewPage() {
   const [data, setData] = useState<DashboardSummary | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError('')
     adminApi.getSummary()
       .then(setData)
       .catch(() => setError('Failed to load dashboard summary'))
   }, [])
 
-  if (error) return <p className="text-red-500">{error}</p>
-  if (!data)  return <p className="text-[#8B7568]">Loading…</p>
+  useEffect(() => { load() }, [load])
+
+  if (error) return <InlineError message={error} onRetry={load} />
+  if (!data) {
+    return (
+      <div className="space-y-8 max-w-5xl">
+        <SkeletonBlock className="h-8 w-40" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {[0, 1, 2].map(i => <SkeletonBlock key={i} className="h-20 w-full rounded-xl" />)}
+        </div>
+        <SkeletonBlock className="h-48 w-full rounded-xl" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 max-w-5xl">
       <h1 className="text-2xl font-semibold text-[#4A3F38]">Overview</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <StatCard label="Total Revenue" value={`EGP ${data.total_revenue.toLocaleString()}`} />
         <StatCard label="Total Orders"  value={data.orders_count.toString()} />
         <StatCard label="Orders Today"  value={data.orders_today.toString()} />
@@ -32,7 +47,8 @@ export default function AdminOverviewPage() {
         {data.top_selling_variants.length === 0 ? (
           <p className="text-sm text-[#8B7568]">No sales data yet.</p>
         ) : (
-          <table className="w-full text-sm bg-white rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-[#ECE3D9] text-[#4A3F38]">
               <tr>
                 <th className="text-left px-4 py-3">Product</th>
@@ -60,6 +76,7 @@ export default function AdminOverviewPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
@@ -69,7 +86,8 @@ export default function AdminOverviewPage() {
         {data.low_stock_variants.length === 0 ? (
           <p className="text-sm text-[#8B7568]">All variants are well-stocked.</p>
         ) : (
-          <table className="w-full text-sm bg-white rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-[#ECE3D9] text-[#4A3F38]">
               <tr>
                 <th className="text-left px-4 py-3">Product</th>
@@ -101,6 +119,7 @@ export default function AdminOverviewPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </div>

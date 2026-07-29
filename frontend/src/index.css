@@ -125,6 +125,16 @@ html { scroll-behavior: smooth; }
   animation: marquee 28s linear infinite;
 }
 
+/* ── Skeleton / soft pulse loader ─────────────────────────────────────────────── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.skeleton-pulse {
+  background-color: #ECE3D9;
+  animation: skeletonPulse 1.4s var(--ease-smooth) infinite;
+}
+
 /* ── prefers-reduced-motion — disable everything above ──────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

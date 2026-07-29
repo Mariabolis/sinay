@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AbandonedCheckout } from '../../api/admin'
 import { adminApi } from '../../api/admin'
+import { SkeletonRows } from '../../components/Skeleton'
 
 const PER_PAGE = 20
 
@@ -54,7 +55,7 @@ export default function AdminAbandonedCheckoutsPage() {
       {error ? (
         <p className="text-red-500 text-sm">{error}</p>
       ) : loading ? (
-        <p className="text-[#8B7568] text-sm">Loading…</p>
+        <SkeletonRows count={5} rowClassName="h-12" />
       ) : checkouts.length === 0 ? (
         <p className="text-[#8B7568] text-sm">No abandoned checkouts — nice.</p>
       ) : (

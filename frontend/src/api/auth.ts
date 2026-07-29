@@ -24,4 +24,10 @@ export const authApi = {
       .then((r) => r.data),
 
   me: () => client.get<AuthUser>('/api/auth/me').then((r) => r.data),
+
+  forgotPassword: (email: string) =>
+    client.post<{ message: string }>('/api/auth/forgot-password', { email }).then((r) => r.data),
+
+  resetPassword: (token: string, password: string) =>
+    client.post<{ message: string }>('/api/auth/reset-password', { token, password }).then((r) => r.data),
 }

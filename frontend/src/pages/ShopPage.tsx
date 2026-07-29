@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { productsApi, type Product, type ColorOption, type ProductStyleOption } from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
+import { useAuthStore } from '../store/authStore'
+import { useWishlistStore } from '../store/wishlistStore'
+import { SkeletonGrid } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import InlineError from '../components/InlineError'
 
 // ── static filter options ──────────────────────────────────────────────────────
 
@@ -30,6 +35,10 @@ function ProductCard({
   product, sizes, styleLabels,
 }: { product: Product; sizes: string[]; styleLabels: Record<string, string> }) {
   const setCart = useCartStore(s => s.setCart)
+  const authUser = useAuthStore(s => s.user)
+  const navigate = useNavigate()
+  const { ids: wishlistIds, toggle: toggleWishlist } = useWishlistStore()
+  const isWishlisted = wishlistIds.has(product.id)
 
   const uniqueColors = useMemo(() => {
     const seen = new Set<string>()
@@ -90,20 +99,36 @@ function ProductCard({
   return (
     <div className="bg-white rounded-[18px] p-[18px] text-center transition duration-150 hover:-translate-y-1 flex flex-col">
       {/* product preview — image if uploaded, colour swatch otherwise */}
-      <Link to={`/product/${product.slug}`} className="block group" tabIndex={-1} aria-hidden>
-        {activeImage ? (
-          <img
-            src={activeImage}
-            alt={product.name}
-            className="h-[120px] w-full object-cover rounded-xl mb-3.5 transition-opacity duration-200 group-hover:opacity-90"
-          />
-        ) : (
-          <div
-            className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
-            style={{ background: activeHex }}
-          />
-        )}
-      </Link>
+      <div className="relative">
+        <button
+          onClick={() => (authUser ? toggleWishlist(product) : navigate('/login'))}
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+          aria-pressed={isWishlisted}
+          className="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors"
+        >
+          <svg
+            width="14" height="14" viewBox="0 0 24 24"
+            fill={isWishlisted ? '#EBCFD2' : 'none'}
+            stroke="#8B7568" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+          </svg>
+        </button>
+        <Link to={`/product/${product.slug}`} className="block group" tabIndex={-1} aria-hidden>
+          {activeImage ? (
+            <img
+              src={activeImage}
+              alt={product.name}
+              className="h-[120px] w-full object-cover rounded-xl mb-3.5 transition-opacity duration-200 group-hover:opacity-90"
+            />
+          ) : (
+            <div
+              className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
+              style={{ background: activeHex }}
+            />
+          )}
+        </Link>
+      </div>
 
       <Link to={`/product/${product.slug}`} className="hover:underline underline-offset-2">
         <h3 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h3>
@@ -174,16 +199,26 @@ function ProductCard({
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const authUser = useAuthStore(s => s.user)
+  const { fetchWishlist, loaded: wishlistLoaded } = useWishlistStore()
+
+  useEffect(() => {
+    if (authUser && !wishlistLoaded) fetchWishlist()
+  }, [authUser, wishlistLoaded, fetchWishlist])
 
   // Filter state — synced with URL params
-  const activeType  = searchParams.get('type')  ?? ''
-  const activeStyle = searchParams.get('style') ?? ''
-  const activeColor = searchParams.get('color') ?? ''
-  const activeSize  = searchParams.get('size')  ?? ''
+  const activeType   = searchParams.get('type')  ?? ''
+  const activeStyle  = searchParams.get('style') ?? ''
+  const activeColor  = searchParams.get('color') ?? ''
+  const activeSize   = searchParams.get('size')  ?? ''
+  const activeSearch = searchParams.get('q')     ?? ''
+
+  const [searchDraft, setSearchDraft] = useState(activeSearch)
 
   const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [colors, setColors]     = useState<ColorOption[]>([])
   const [sizes, setSizes]       = useState<string[]>(['S', 'M', 'L', 'XL'])
 
@@ -230,15 +265,24 @@ export default function ShopPage() {
     }).catch(() => {})
   }, [])
 
-  // Fetch products on filter change
+  // Debounce the search box into the URL param so we don't fetch on every keystroke
   useEffect(() => {
+    const id = setTimeout(() => setParam('q', searchDraft.trim()), 350)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDraft])
+
+  // Fetch products on filter change
+  const fetchProducts = useCallback(() => {
     setLoading(true)
+    setLoadError(false)
     productsApi
       .list({
-        type:  activeType  as 'top' | 'bottom' | undefined || undefined,
-        style: activeStyle || undefined,
-        color: activeColor || undefined,
-        size:  activeSize  || undefined,
+        type:   activeType  as 'top' | 'bottom' | undefined || undefined,
+        style:  activeStyle || undefined,
+        color:  activeColor || undefined,
+        size:   activeSize  || undefined,
+        search: activeSearch || undefined,
       })
       .then(res => {
         setProducts(res.products)
@@ -247,9 +291,14 @@ export default function ShopPage() {
       .catch(() => {
         setProducts([])
         setTotal(0)
+        setLoadError(true)
       })
       .finally(() => setLoading(false))
-  }, [activeType, activeStyle, activeColor, activeSize])
+  }, [activeType, activeStyle, activeColor, activeSize, activeSearch])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
   const pillBase =
     'font-body font-semibold text-[12px] rounded-full px-[14px] py-[7px] border-[1.4px] border-mocha cursor-pointer transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-mocha focus-visible:outline-offset-[2px]'
@@ -272,6 +321,27 @@ export default function ShopPage() {
           {total > 0 && !loading && (
             <p className="text-[13px] text-[#8a7c72] mt-1">{total} pieces</p>
           )}
+        </div>
+
+        {/* ── search ───────────────────────────────────────────────────────── */}
+        <div className="max-w-[360px] mx-auto mb-8 relative">
+          <svg
+            viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mocha/40 pointer-events-none"
+          >
+            <circle cx="9" cy="9" r="6" />
+            <path d="M18 18 L13.5 13.5" />
+          </svg>
+          <input
+            type="search"
+            value={searchDraft}
+            onChange={e => setSearchDraft(e.target.value)}
+            placeholder="Search pieces…"
+            aria-label="Search products"
+            className="w-full bg-white rounded-full pl-10 pr-4 py-2.5 text-[13px] text-ink
+                       placeholder:text-mocha/40 border border-mocha/15 focus:outline-none
+                       focus:border-mocha/40 transition-colors"
+          />
         </div>
 
         {/* ── filter bar ──────────────────────────────────────────────────── */}
@@ -361,14 +431,11 @@ export default function ShopPage() {
 
         {/* ── product grid ────────────────────────────────────────────────── */}
         {loading ? (
-          <div className="text-center py-20 text-mocha/50 text-[13px] tracking-wide">
-            loading…
-          </div>
+          <SkeletonGrid count={8} />
+        ) : loadError ? (
+          <InlineError message="We couldn't load the collection." onRetry={fetchProducts} />
         ) : products.length === 0 ? (
-          <div className="text-center py-20">
-            <span className="font-logo text-4xl text-dusty-pink" aria-hidden>≈</span>
-            <p className="text-[14px] text-[#8a7c72] mt-3">No pieces match these filters.</p>
-          </div>
+          <EmptyState message="No pieces match these filters." subtext="Try clearing a filter or searching for something else." />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {products.map(p => (

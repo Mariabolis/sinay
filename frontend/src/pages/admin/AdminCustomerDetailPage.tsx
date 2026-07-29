@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { AdminCustomerDetail } from '../../api/admin'
 import { adminApi } from '../../api/admin'
 import { StatusBadge } from './AdminOrdersPage'
+import { SkeletonBlock } from '../../components/Skeleton'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
@@ -25,15 +26,29 @@ export default function AdminCustomerDetailPage() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState('')
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return
+    setLoading(true)
+    setError('')
     adminApi.getCustomer(id)
       .then(setCustomer)
       .catch(() => setError('Customer not found'))
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <p className="text-[#8B7568] text-sm">Loading…</p>
+  useEffect(() => { load() }, [load])
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl space-y-6">
+        <SkeletonBlock className="h-6 w-48" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[0, 1, 2].map(i => <SkeletonBlock key={i} className="h-16 w-full rounded-xl" />)}
+        </div>
+        <SkeletonBlock className="h-40 w-full rounded-xl" />
+      </div>
+    )
+  }
   if (error || !customer) return (
     <div>
       <p className="text-red-500 text-sm mb-3">{error || 'Customer not found'}</p>
@@ -61,7 +76,7 @@ export default function AdminCustomerDetailPage() {
       </div>
 
       {/* ── Stats strip ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Orders"      value={String(customer.order_count)} />
         <StatCard label="Total Spend" value={`EGP ${customer.total_spend.toLocaleString()}`} />
         <StatCard label="Member Since" value={fmtDate(customer.created_at)} />
