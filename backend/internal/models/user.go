@@ -14,6 +14,7 @@ type User struct {
 	FullName     *string   `gorm:"type:varchar(255)"`
 	Phone        *string   `gorm:"type:varchar(50)"`
 	Role         string    `gorm:"type:varchar(20);not null;default:'customer'"`
+	GoogleID     *string   `gorm:"type:varchar(255);uniqueIndex"`
 	CreatedAt    time.Time `gorm:"type:timestamptz;not null;autoCreateTime"`
 
 	Addresses []Address `gorm:"foreignKey:UserID"`

@@ -20,6 +20,7 @@ type Config struct {
 	MigrationsDir string
 	// Auth
 	JWTSecret     string
+	GoogleClientID string
 	// CORS — comma-separated list of allowed origins
 	CORSOrigins   string
 	// Paymob
@@ -61,6 +62,7 @@ func Load() *Config {
 		ServerPort:       getEnv("SERVER_PORT", "8088"),
 		MigrationsDir:    getEnv("MIGRATIONS_DIR", "migrations"),
 		JWTSecret:        getEnv("JWT_SECRET", ""),
+		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
 		CORSOrigins:      getEnv("CORS_ORIGINS", "http://localhost:5174"),
 		PaymobBaseURL:    getEnv("PAYMOB_BASE_URL", "https://accept.paymob.com/api"),
 		PaymobAPIKey:     getEnv("PAYMOB_API_KEY", ""),

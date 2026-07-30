@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import sinayLogoBeige from '../assets/logo/Sinay-Logo-B.png'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
@@ -153,6 +154,17 @@ export default function RegisterPage() {
             {loading ? '...' : 'Create Account'}
           </button>
         </form>
+
+        {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+          <>
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-mocha/15" />
+              <span className="text-[11px] text-mocha/40 uppercase tracking-wide">or</span>
+              <div className="flex-1 h-px bg-mocha/15" />
+            </div>
+            <GoogleSignInButton onError={setError} />
+          </>
+        )}
 
         <p className="text-center mt-8 text-xs text-mocha/50">
           Already have an account?{' '}

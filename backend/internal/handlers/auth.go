@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +47,10 @@ type loginRequest struct {
 
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type googleAuthRequest struct {
+	Credential string `json:"credential" binding:"required"`
 }
 
 // ── response types ────────────────────────────────────────────────────────────
@@ -120,6 +126,68 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return
+	}
+
+	resp, err := h.issueTokens(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not issue tokens"})
+		return
+	}
+	h.mergeCarts(c, user.ID)
+	c.JSON(http.StatusOK, resp)
+}
+
+// POST /api/auth/google
+// Accepts the ID token ("credential") produced by Google Identity Services'
+// Sign in with Google button, verifies it against Google's tokeninfo endpoint,
+// then logs in the matching user — linking by email if they already have a
+// password account, or creating a new account on first sign-in.
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	var req googleAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if h.cfg.GoogleClientID == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Google sign-in is not configured"})
+		return
+	}
+
+	info, err := verifyGoogleIDToken(req.Credential)
+	if err != nil || info.Aud != h.cfg.GoogleClientID || info.EmailVerified != "true" || info.Email == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid Google credential"})
+		return
+	}
+
+	var user models.User
+	if h.db.Where("google_id = ?", info.Sub).First(&user).Error != nil {
+		if h.db.Where("email = ?", info.Email).First(&user).Error == nil {
+			// Existing password account with the same email — link it.
+			h.db.Model(&user).Update("google_id", info.Sub)
+		} else {
+			randPass := make([]byte, 32)
+			if _, err := rand.Read(randPass); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+				return
+			}
+			hash, err := bcrypt.GenerateFromPassword(randPass, bcrypt.DefaultCost)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+				return
+			}
+			sub := info.Sub
+			user = models.User{
+				Email:        info.Email,
+				PasswordHash: string(hash),
+				FullName:     nullableStr(info.Name),
+				Role:         "customer",
+				GoogleID:     &sub,
+			}
+			if err := h.db.Create(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
+				return
+			}
+		}
 	}
 
 	resp, err := h.issueTokens(user)
@@ -332,6 +400,35 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	h.db.Model(&reset).Update("used", true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated — you can log in now."})
+}
+
+// ── Google ID token verification ─────────────────────────────────────────────
+
+type googleTokenInfo struct {
+	Aud           string `json:"aud"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
+	Name          string `json:"name"`
+	Sub           string `json:"sub"`
+}
+
+// verifyGoogleIDToken delegates signature/expiry verification to Google's
+// tokeninfo endpoint rather than validating the JWT locally — simple and
+// dependency-free, at the cost of one extra HTTP round trip per sign-in.
+func verifyGoogleIDToken(idToken string) (*googleTokenInfo, error) {
+	resp, err := http.Get("https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(idToken))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token verification failed: status %d", resp.StatusCode)
+	}
+	var info googleTokenInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return &info, nil
 }
 
 // ── token helpers ─────────────────────────────────────────────────────────────

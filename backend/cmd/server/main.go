@@ -94,6 +94,7 @@ func main() {
 		auth := api.Group("/auth")
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login",    authHandler.Login)
+		auth.POST("/google",   authHandler.GoogleLogin)
 		auth.POST("/refresh",  authHandler.Refresh)
 		auth.POST("/forgot-password", authHandler.ForgotPassword)
 		auth.POST("/reset-password",  authHandler.ResetPassword)

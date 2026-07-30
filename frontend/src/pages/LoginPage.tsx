@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import sinayLogoBeige from '../assets/logo/Sinay-Logo-B.png'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -101,6 +102,17 @@ export default function LoginPage() {
             {loading ? '...' : 'Sign In'}
           </button>
         </form>
+
+        {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+          <>
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-mocha/15" />
+              <span className="text-[11px] text-mocha/40 uppercase tracking-wide">or</span>
+              <div className="flex-1 h-px bg-mocha/15" />
+            </div>
+            <GoogleSignInButton redirectTo={redirect} onError={setError} />
+          </>
+        )}
 
         <p className="text-center mt-8 text-xs text-mocha/50">
           Don&apos;t have an account?{' '}
