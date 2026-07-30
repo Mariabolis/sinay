@@ -35,11 +35,11 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1 flex flex-col items-start gap-4">
-            <div className="h-20 overflow-hidden flex items-center">
+            <div className="flex items-center">
               <img
                 src={sinayLogoWhite}
                 alt="SINAY"
-                className="h-[240px] w-auto object-contain flex-none"
+                className="h-20 w-auto object-contain"
               />
             </div>
             <p className="text-[12.5px] leading-relaxed text-cream/50 max-w-[200px]">

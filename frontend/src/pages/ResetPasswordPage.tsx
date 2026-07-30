@@ -37,8 +37,8 @@ export default function ResetPasswordPage() {
     <main className="min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <div className="h-24 overflow-hidden flex items-center justify-center mx-auto">
-            <img src={sinayLogoBeige} alt="SINAY" className="h-[280px] w-auto object-contain flex-none" />
+          <div className="flex items-center justify-center mx-auto">
+            <img src={sinayLogoBeige} alt="SINAY" className="h-24 w-auto object-contain" />
           </div>
           <p className="text-mocha/45 text-xs tracking-[0.2em] uppercase mt-2">
             set a new password

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { productsApi, type Product, type ColorOption, type ProductStyleOption } from '../api/products'
+import { productsApi, setsApi, type Product, type ColorOption, type ProductStyleOption, type ReadySet } from '../api/products'
 import { cartApi } from '../api/cart'
 import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
@@ -8,6 +8,7 @@ import { useWishlistStore } from '../store/wishlistStore'
 import { SkeletonGrid } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import InlineError from '../components/InlineError'
+import ReadySetCard from '../components/ReadySetCard'
 
 // ── static filter options ──────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ const TYPE_OPTS = [
   { value: '',       label: 'All'     },
   { value: 'top',    label: 'Tops'    },
   { value: 'bottom', label: 'Bottoms' },
+  { value: 'sets',   label: 'Sets'    },
 ]
 
 const DEFAULT_TOP_STYLES: ProductStyleOption[] = [
@@ -215,7 +217,11 @@ export default function ShopPage() {
 
   const [searchDraft, setSearchDraft] = useState(activeSearch)
 
+  const isSetsView = activeType === 'sets'
+  const isAllView  = activeType === ''
+
   const [products, setProducts] = useState<Product[]>([])
+  const [sets, setSets]         = useState<ReadySet[]>([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -272,29 +278,58 @@ export default function ShopPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchDraft])
 
-  // Fetch products on filter change
+  // Fetch products (or ready-made sets) on filter change
   const fetchProducts = useCallback(() => {
     setLoading(true)
     setLoadError(false)
-    productsApi
-      .list({
-        type:   activeType  as 'top' | 'bottom' | undefined || undefined,
-        style:  activeStyle || undefined,
-        color:  activeColor || undefined,
-        size:   activeSize  || undefined,
-        search: activeSearch || undefined,
-      })
-      .then(res => {
+
+    const q = activeSearch.trim().toLowerCase()
+    const filterSets = (all: ReadySet[]) => all.filter(s =>
+      (!activeSize || s.available_sizes.includes(activeSize)) &&
+      (!q || s.name.toLowerCase().includes(q)),
+    )
+
+    if (isSetsView) {
+      setsApi.list()
+        .then(all => {
+          const filtered = filterSets(all)
+          setSets(filtered)
+          setTotal(filtered.length)
+        })
+        .catch(() => {
+          setSets([])
+          setTotal(0)
+          setLoadError(true)
+        })
+        .finally(() => setLoading(false))
+      return
+    }
+
+    const productsReq = productsApi.list({
+      type:   activeType  as 'top' | 'bottom' | undefined || undefined,
+      style:  activeStyle || undefined,
+      color:  activeColor || undefined,
+      size:   activeSize  || undefined,
+      search: activeSearch || undefined,
+    })
+    // The "All" tab also folds in ready-made sets alongside individual pieces.
+    const setsReq = isAllView ? setsApi.list().catch(() => [] as ReadySet[]) : Promise.resolve([] as ReadySet[])
+
+    Promise.all([productsReq, setsReq])
+      .then(([res, allSets]) => {
         setProducts(res.products)
-        setTotal(res.total)
+        const filtered = filterSets(allSets)
+        setSets(filtered)
+        setTotal(res.total + filtered.length)
       })
       .catch(() => {
         setProducts([])
+        setSets([])
         setTotal(0)
         setLoadError(true)
       })
       .finally(() => setLoading(false))
-  }, [activeType, activeStyle, activeColor, activeSize, activeSearch])
+  }, [isSetsView, isAllView, activeType, activeStyle, activeColor, activeSize, activeSearch])
 
   useEffect(() => {
     fetchProducts()
@@ -316,10 +351,10 @@ export default function ShopPage() {
             className="font-logo text-ink mt-2"
             style={{ fontSize: 'clamp(28px, 5vw, 40px)' }}
           >
-            {activeType === 'top' ? 'Tops' : activeType === 'bottom' ? 'Bottoms' : 'All Pieces'}
+            {activeType === 'top' ? 'Tops' : activeType === 'bottom' ? 'Bottoms' : isSetsView ? 'Ready-made Sets' : 'All Pieces'}
           </h1>
           {total > 0 && !loading && (
-            <p className="text-[13px] text-[#8a7c72] mt-1">{total} pieces</p>
+            <p className="text-[13px] text-[#8a7c72] mt-1">{total} {isSetsView ? (total === 1 ? 'set' : 'sets') : 'pieces'}</p>
           )}
         </div>
 
@@ -361,7 +396,7 @@ export default function ShopPage() {
           </div>
 
           {/* Style */}
-          {styleOptions.length > 0 && (
+          {!isSetsView && styleOptions.length > 0 && (
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setParam('style', '')}
@@ -382,7 +417,7 @@ export default function ShopPage() {
           )}
 
           {/* Color swatches */}
-          {colors.length > 0 && (
+          {!isSetsView && colors.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[11px] tracking-[0.18em] uppercase text-mocha">Colour</span>
               <button
@@ -429,18 +464,44 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* ── product grid ────────────────────────────────────────────────── */}
+        {/* ── product / sets grid ──────────────────────────────────────────── */}
         {loading ? (
           <SkeletonGrid count={8} />
         ) : loadError ? (
           <InlineError message="We couldn't load the collection." onRetry={fetchProducts} />
-        ) : products.length === 0 ? (
+        ) : isSetsView ? (
+          sets.length === 0 ? (
+            <EmptyState message="No sets match these filters." subtext="Try clearing a filter or searching for something else." />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {sets.map(s => (
+                <ReadySetCard key={s.id} set={s} />
+              ))}
+            </div>
+          )
+        ) : products.length === 0 && sets.length === 0 ? (
           <EmptyState message="No pieces match these filters." subtext="Try clearing a filter or searching for something else." />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {products.map(p => (
-              <ProductCard key={p.id} product={p} sizes={sizes} styleLabels={styleLabels} />
-            ))}
+          <div className="space-y-12">
+            {products.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                {products.map(p => (
+                  <ProductCard key={p.id} product={p} sizes={sizes} styleLabels={styleLabels} />
+                ))}
+              </div>
+            )}
+            {isAllView && sets.length > 0 && (
+              <div>
+                <h2 className="font-logo text-ink mb-5" style={{ fontSize: 'clamp(20px, 3vw, 26px)' }}>
+                  Ready-made Sets
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {sets.map(s => (
+                    <ReadySetCard key={s.id} set={s} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
