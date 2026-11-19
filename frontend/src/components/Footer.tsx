@@ -27,7 +27,7 @@ const ACCOUNT_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-mocha text-cream/90 font-body">
+    <footer className="bg-[#7D695D] text-cream/90 font-body">
       <div className="max-w-[1080px] mx-auto px-6 pt-14 pb-10">
 
         {/* ── Top row ─────────────────────────────────────────────────────── */}
