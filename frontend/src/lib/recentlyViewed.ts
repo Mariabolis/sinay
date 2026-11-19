@@ -7,6 +7,9 @@ export interface RecentlyViewedItem {
   price:     number
   color_hex: string
   image_url: string | null
+  // Optional: items saved before these fields existed won't have them
+  type?:     string
+  style?:    string
 }
 
 const MAX_ITEMS = 6
@@ -33,6 +36,8 @@ export function trackRecentlyViewed(userId: string | undefined, product: Product
     price:     firstVariant?.price ?? product.base_price,
     color_hex: firstVariant?.color_hex ?? '#EBCFD2',
     image_url: product.variants.find(v => v.image_url)?.image_url ?? null,
+    type:      product.type,
+    style:     product.style,
   }
   const existing = getRecentlyViewed(userId).filter(i => i.id !== product.id)
   const next = [item, ...existing].slice(0, MAX_ITEMS)

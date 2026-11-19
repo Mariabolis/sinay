@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { productsApi, type Product } from '../../api/products'
 import { useReveal } from '../../lib/useReveal'
 import { SkeletonBlock } from '../Skeleton'
+import GarmentSilhouette from '../GarmentSilhouette'
 
 export default function ProductPreviewGrid() {
   const [products, setProducts] = useState<Product[]>([])
@@ -70,10 +71,7 @@ export default function ProductPreviewGrid() {
                     className="h-[120px] w-full object-cover rounded-xl mb-3.5"
                   />
                 ) : (
-                  <div
-                    className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200"
-                    style={{ background: colorHex }}
-                  />
+                  <GarmentSilhouette type={product.type} style={product.style} colorHex={colorHex} />
                 )}
                 <h4 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h4>
                 {colorName && (

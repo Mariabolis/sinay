@@ -4,6 +4,7 @@ import { useWishlistStore } from '../store/wishlistStore'
 import { SkeletonGrid } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import InlineError from '../components/InlineError'
+import GarmentSilhouette from '../components/GarmentSilhouette'
 
 export default function WishlistPage() {
   const { products, loaded, error, fetchWishlist, toggle } = useWishlistStore()
@@ -51,7 +52,7 @@ export default function WishlistPage() {
                   {imageUrl ? (
                     <img src={imageUrl} alt={product.name} className="h-[120px] w-full object-cover rounded-xl mb-3.5" />
                   ) : (
-                    <div className="h-[120px] rounded-xl mb-3.5" style={{ background: colorHex }} />
+                    <GarmentSilhouette type={product.type} style={product.style} colorHex={colorHex} />
                   )}
                   <h3 className="font-body font-semibold text-[14px] text-ink mb-0.5">{product.name}</h3>
                   <p className="text-[11.5px] text-[#8a7c72] mb-1">{colorName}</p>

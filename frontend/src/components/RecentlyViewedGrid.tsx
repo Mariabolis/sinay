@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { RecentlyViewedItem } from '../lib/recentlyViewed'
+import GarmentSilhouette from './GarmentSilhouette'
 
 export default function RecentlyViewedGrid({ items }: { items: RecentlyViewedItem[] }) {
   return (
@@ -12,6 +13,8 @@ export default function RecentlyViewedGrid({ items }: { items: RecentlyViewedIte
         >
           {item.image_url ? (
             <img src={item.image_url} alt={item.name} className="h-[90px] w-full object-cover rounded-xl mb-2.5" />
+          ) : item.type && item.style ? (
+            <GarmentSilhouette type={item.type} style={item.style} colorHex={item.color_hex} className="h-[90px] mb-2.5" />
           ) : (
             <div className="h-[90px] rounded-xl mb-2.5" style={{ background: item.color_hex }} />
           )}

@@ -9,6 +9,7 @@ import { SkeletonGrid } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import InlineError from '../components/InlineError'
 import ReadySetCard from '../components/ReadySetCard'
+import GarmentSilhouette from '../components/GarmentSilhouette'
 
 // ── static filter options ──────────────────────────────────────────────────────
 
@@ -124,9 +125,11 @@ function ProductCard({
               className="h-[120px] w-full object-cover rounded-xl mb-3.5 transition-opacity duration-200 group-hover:opacity-90"
             />
           ) : (
-            <div
-              className="h-[120px] rounded-xl mb-3.5 transition-colors duration-200 group-hover:brightness-95"
-              style={{ background: activeHex }}
+            <GarmentSilhouette
+              type={product.type}
+              style={product.style}
+              colorHex={activeHex}
+              className="h-[120px] mb-3.5 transition duration-200 group-hover:brightness-95"
             />
           )}
         </Link>
