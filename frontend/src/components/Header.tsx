@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
+import sinayWordmark from '../assets/logo/Sinay-Wordmark.png'
 
 const NAV_LINKS = [
   { label: 'Home',            href: '/'               },
@@ -111,9 +112,7 @@ export default function Header() {
           className="flex justify-center focus-visible:outline-2 focus-visible:outline-mocha focus-visible:rounded-sm"
           onClick={closeMenu}
         >
-          <span className="font-logo text-[22px] tracking-[0.18em] text-ink uppercase select-none">
-            Sinay
-          </span>
+          <img src={sinayWordmark} alt="SINAY" className="h-[26px] w-auto select-none" draggable={false} />
         </Link>
 
         {/* ── Right: icon actions ── */}
