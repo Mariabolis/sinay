@@ -59,7 +59,7 @@ func Load() *Config {
 		DBPassword:       getEnv("DB_PASSWORD", ""),
 		DBName:           getEnv("DB_NAME", "sinay"),
 		DBSSLMode:        getEnv("DB_SSLMODE", "disable"),
-		ServerPort:       getEnv("SERVER_PORT", "8088"),
+		ServerPort:       getEnv("SERVER_PORT", getEnv("PORT", "8088")), // PORT is set by hosts like Railway
 		MigrationsDir:    getEnv("MIGRATIONS_DIR", "migrations"),
 		JWTSecret:        getEnv("JWT_SECRET", ""),
 		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
